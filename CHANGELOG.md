@@ -4,7 +4,15 @@
 
 ### Added
 
+- Position-based terminal output
+  - Much better Unicode handling (especially for complicated scripts)
+- Expand auto-sized columns to reach table width (if defined)
+
 ### Changed
+
+- Improved file output
+  - Strip out any embedded ANSI codes
+- Use pipe characters for borders
 
 ### Fixed
 
