@@ -1,4 +1,4 @@
-## tabulator: A Nim library for formatting plain‑text tables
+## tabulator: A Nim library for generating plain‑text tables
 ##
 ## Features:
 ## - Auto‑column creation
