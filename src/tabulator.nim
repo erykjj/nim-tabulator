@@ -33,6 +33,7 @@ type
 proc visibleLen(s: string): int =
   ## Returns number of graphemes in `s`, ignoring ANSI escape sequences
   ## If a malformed ANSI sequence is found (no terminator), it is ignored
+  ## For scripts with ambiguous width (Hindi, Arabic, etc.), column alignment may be off by ±1 depending on terminal
   var i = 0
   while i < s.len:
     if s[i] == '\e':
