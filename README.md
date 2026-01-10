@@ -6,10 +6,10 @@ A Nim library for generating plain‑text tables (with Unicode and ANSI code sup
 
 - **Auto‑column creation** – Define columns explicitly or let the library infer them from your data
 - **Unicode‑aware** – Proper grapheme counting for international text
-- **ANSI code support** – Colors and styling preserved (ignored for width calculation)
+- **ANSI code support** – Colors and styling preserved
 - **Configurable columns** – Fixed or auto‑width, left/center/right alignment
 - **Terminal‑width aware** – Automatically truncates to fit terminal (or custom width)
-- **Clean output** – Optional column separators with proper spacing
+- **Clean output** – Optional box‑drawing borders with proper spacing
 - **No external dependencies** – Uses only Nim standard library
 
 ## Installation
@@ -35,11 +35,13 @@ t.renderTable(separator = true)
 
 Output:
 ```
-| Product              | Price | In Stock |
-|----------------------|-------|----------|
-| Apple                | $2.50 |   yes    |
-| Banana               | $1.20 |    no    |
-| Cherry               | $15.00|   low    |
+┏━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━┓
+┃ Product                ┃ Price   ┃ In Stock  ┃
+┣━━━━━━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━╋━━━━━━━━━━━┫
+┃ Apple                  ┃   $2.50 ┃   yes     ┃
+┃ Banana                 ┃   $1.20 ┃    no     ┃
+┃ Cherry                 ┃  $15.00 ┃   low     ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━┻━━━━━━━━━┻━━━━━━━━━━━┛
 ```
 
 ## API Reference
@@ -52,39 +54,36 @@ type Table* = ref object  # Opaque, create with newTable()
 
 ### Procedures
 ```nim
-proc newTable*(): Table
-  ## Creates a new empty table.
+proc newTable(): Table
+  ## Create a new empty table
 
-proc addColumn*(t: Table, title: string = "", width: int = 0, align: Alignment = Left)
-  ## Adds a column definition.
-  ## - `title`: Column header (empty = no header)
+proc addColumn(t: Table, title: string = "", width: int = 0, align: Alignment = Left)
+  ## Add a column definition
+  ## - `title`: Column header (pre‑format with embedded ANSI codes)
+  ##   - if ALL column titles are empty = no header
   ## - `width`: Fixed width (0 = auto‑size to content)
   ## - `align`: Cell alignment (Left, Center, Right)
 
-proc addRow*(t: Table, cells: seq[string])
-  ## Adds a row of data. Cells are strings (pre‑format numbers, embed ANSI codes).
+proc addRow(t: Table, cells: seq[string])
+  ## Add a row of data; cells are strings (pre‑format numbers, embed ANSI codes)
 
-proc renderTable*(t: Table, separator = false, width: int = 0, outFile: File = stdout)
-  ## Renders the table.
-  ## - `separator`: If true, adds `|` between columns
-  ## - `width`: Maximum line width (0 = use terminal width)
+proc renderTable(t: Table, separator = false, width: int = 0, outFile: File = stdout)
+  ## Render the table
+  ## - `separator`: If true, adds box‑drawing borders between columns
+  ## - `width`: Maximum line width (0 = use terminal width for terminal, no limit for files)
   ## - `outFile`: Output file (default stdout)
 ```
 
 ## Examples
 
 ### Auto‑columns (no header)
+Automatically creates columns based on data:
 ```nim
 var t = newTable()
 t.addRow(@["A", "Short text", "42"])
 t.addRow(@["B", "Longer piece of content here", "-15"])
 t.addRow(@["", "Another row", "9999"])
 t.renderTable()
-```
-
-### Custom width and no separators
-```nim
-t.renderTable(separator = false, width = 80)
 ```
 
 ### Styled headers and cells
@@ -98,11 +97,37 @@ t.renderTable(separator = true)
 
 ## Advanced Usage
 
-### Handling wide tables
-When table width exceeds terminal width, it's cleanly truncated at the right edge:
+### Position‑based terminal rendering vs whole-line rendering for text-file output
+When outputting to a terminal, `tabulator` uses cursor positioning for accurate display of all Unicode scripts (including East‑Asian and complex scripts like Hindi, Arabic)
 ```nim
-# With many/wide columns, output will be cut at terminal boundary
-t.renderTable(width = 120)  # Specify custom width for non‑terminal output
+# Terminal gets cursor‑based output
+t.renderTable(separator = true)
+```
+
+Provide a file name for text-file output:
+```nim
+# Files get clean text output (ANSI stripped)
+let f = open("table.txt", fmWrite)
+t.renderTable(separator = true, outFile = f)
+close(f)
+```
+
+### Width handling
+- **Terminal output:** If `width=0`, uses terminal width; truncates if too wide
+- **File output:** If `width=0`, no truncation; if `width>0`, truncates to that width
+- **Column expansion:** If specified `width` > natural table width, auto‑sized columns expand evenly
+
+```nim
+# Expands auto‑width columns to fill total table width of 120
+t.renderTable(width = 120)
+
+# Uses terminal width, truncates if needed
+t.renderTable()
+
+# File with no width limit
+let f = open("wide.txt", fmWrite)
+t.renderTable(outFile = f)  # No truncation
+close(f)
 ```
 
 ### Cell truncation
@@ -110,13 +135,4 @@ Fixed‑width columns truncate with ellipsis:
 ```nim
 t.addColumn("Description", width = 10)
 t.addRow(@["This is too long and will show as 'This is t…'"])
-```
-
-### No columns defined
-The library creates columns automatically based on data:
-```nim
-var t = newTable()
-t.addRow(@["Auto", "column", "creation"])
-t.addRow(@["Works", "without", "explicit", "columns"])
-t.renderTable()  # Creates 4 left‑aligned auto‑width columns
 ```
