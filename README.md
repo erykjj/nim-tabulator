@@ -33,7 +33,7 @@ t.addRow(@["Cherry", "$15.00", "\e[31mlow\e[0m"])
 t.renderTable(separator = true)
 ```
 
-Output:
+Output (colors missing):
 ```
 ┏━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━┓
 ┃ Product                ┃ Price   ┃ In Stock  ┃
@@ -136,3 +136,9 @@ Fixed‑width columns truncate with ellipsis:
 t.addColumn("Description", width = 10)
 t.addRow(@["This is too long and will show as 'This is t…'"])
 ```
+
+### No row-separator borders
+These don't help and take up space, IMHO
+
+### No cell-overflow/text wrapping
+If necessary, handle this yourself by splitting the text and adding extra rows
