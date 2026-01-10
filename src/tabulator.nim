@@ -354,7 +354,8 @@ proc newTable*(): Table =
 
 proc addColumn*(t: Table, title: string = "", width: int = 0, align: Alignment = Left) =
   ## Add a column definition
-  ## - `title`: Column header (pre‑format numbers, embed ANSI codes; empty = no header)
+  ## - `title`: Column header (pre‑format with embedded ANSI codes)
+  ##   - if ALL column titles are empty = no header
   ## - `width`: Fixed width (0 = auto‑size to content)
   ## - `align`: Cell alignment (Left, Center, Right)
   if width < 0:
