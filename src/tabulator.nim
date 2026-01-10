@@ -12,7 +12,7 @@ import
   std/[terminal, unicode, strutils, math]
 
 const
-  Version* = "0.1.0"
+  Version* = "0.2.0"
 
 type
   Alignment* = enum
@@ -177,13 +177,25 @@ proc renderTable*(t: Table, separator = false, width: int = 0, outFile: File = s
       colWidths[i] = w
 
   # 2. Build separator strings
-  let pipe = if separator: "|" else: ""
+  let pipe = if separator: "┃" else: ""
   let space = " "
 
   # 3. Compute line components
+  var topBorder: string
   var headerLine: string
   var separatorLine: string
   var cellLines: seq[string] = @[]
+  var bottomBorder: string
+
+  # Build top border
+  if separator:
+    topBorder.add "┏"
+    for i, w in colWidths:
+      topBorder.add repeat("━", w + 2)
+      if i < colWidths.high:
+        topBorder.add "┳"
+      else:
+        topBorder.add "┓"
 
   # Build header line (only if any column has a title)
   var hasHeader = false
@@ -209,16 +221,16 @@ proc renderTable*(t: Table, separator = false, width: int = 0, outFile: File = s
   # Build header separator line if there is a header
   if hasHeader:
     if separator:
-      separatorLine.add pipe
+      separatorLine.add "┣"
       for i, w in colWidths:
-        separatorLine.add repeat('-', w + 2)
+        separatorLine.add repeat("━", w + 2)
         if i < colWidths.high:
-          separatorLine.add pipe
+          separatorLine.add "╋"
         else:
-          separatorLine.add pipe
+          separatorLine.add "┫"
     else:
       for i, w in colWidths:
-        separatorLine.add repeat('-', w)
+        separatorLine.add repeat("─", w)
         if i < colWidths.high:
           separatorLine.add " "
 
@@ -240,13 +252,27 @@ proc renderTable*(t: Table, separator = false, width: int = 0, outFile: File = s
           line.add space & pipe
     cellLines.add line
 
+  # Build bottom border
+  if separator:
+    bottomBorder.add "┗"
+    for i, w in colWidths:
+      bottomBorder.add repeat("━", w + 2)
+      if i < colWidths.high:
+        bottomBorder.add "┻"
+      else:
+        bottomBorder.add "┛"
+
   # 4. Truncate lines to terminal width
   proc truncateToTerminal(s: string): string =
     truncateToVisibleWidth(s, termWidth)
 
   # 5. Output
+  if separator:
+    outFile.writeLine truncateToTerminal(topBorder)
   if hasHeader:
     outFile.writeLine truncateToTerminal(headerLine)
     outFile.writeLine truncateToTerminal(separatorLine)
   for line in cellLines:
     outFile.writeLine truncateToTerminal(line)
+  if separator:
+    outFile.writeLine truncateToTerminal(bottomBorder)
