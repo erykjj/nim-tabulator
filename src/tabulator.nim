@@ -94,7 +94,6 @@ proc formatCell(content: string, width: int, align: Alignment): string =
 proc truncateToVisibleWidth(s: string, maxVisible: int): string =
   ## Truncate `s` to at most `maxVisible` visible graphemes
   ## Preserves ANSI sequences in the kept part
-  ## Handles malformed ANSI sequences gracefully
   if maxVisible <= 0:
     return ""
   var visibleCount = 0
@@ -120,6 +119,8 @@ proc truncateToVisibleWidth(s: string, maxVisible: int): string =
       result.add s[i..<i+g]
       i += g
       inc visibleCount
+  if i < s.len:
+    result.add "\e[0m"
 
 
 # Public API
