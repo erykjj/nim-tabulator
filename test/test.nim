@@ -30,6 +30,10 @@ t.addRow(@["010", "Almond Milk Unsweetened", "Beverages", "Nutty Goodness", "3.9
 echo "=== Testing with separator=true ==="
 echo "Terminal width: ", terminalWidth()
 t.renderTable(separator = true)
+var f: File
+if open(f, "tabulator_test.txt", fmWrite):
+  t.renderTable(separator = true, outFile = f)
+  close(f)
 
 echo "\n=== Testing with separator=false ==="
 t.renderTable(separator = false)
@@ -46,6 +50,11 @@ t2.addRow(@["B", "Short", "1234567890", "\e[31m-15\e[0m"])
 t2.addRow(@["", "Another test with \e[1mANSI\e[0m codes that don't affect width", "Hi", "9999"])
 
 t2.renderTable(separator = true)
+t2.renderTable(separator = true, width=40)
+t2.renderTable(separator = true, width=80)
+t2.renderTable(separator = true, width=120)
+t2.renderTable(separator = true, width=160)
+t2.renderTable(separator = true, width=200)
 
 echo "\n=== Testing edge cases ==="
 var t3 = newTable()
