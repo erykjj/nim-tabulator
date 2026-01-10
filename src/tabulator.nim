@@ -3,7 +3,10 @@
 ## Features:
 ## - Auto‑column creation
 ## - Unicode and ANSI code support
-## - Configurable alignment and widths
+## - Configurable alignvar f: File
+# if open(f, "test.txt", fmWrite):
+#   t.renderTable(separator = true, outFile = f)
+#   close(f)ment and widths
 ## - Terminal‑width aware truncation
 ##
 ## License: Infiniti Noncommercial License (see LICENSE for full terms)
@@ -31,9 +34,7 @@ type
 # Helper procs
 
 proc visibleLen(s: string): int =
-  ## Returns number of graphemes in `s`, ignoring ANSI escape sequences
-  ## If a malformed ANSI sequence is found (no terminator), it is ignored
-  ## For scripts with ambiguous width (Hindi, Arabic, etc.), column alignment may be off by ±1 depending on terminal
+  ## Return number of graphemes in `s`, ignoring ANSI escape sequences
   var i = 0
   while i < s.len:
     if s[i] == '\e':
@@ -92,9 +93,8 @@ proc formatCell(content: string, width: int, align: Alignment): string =
       let rightPad = pad - leftPad
       result = repeat(' ', leftPad) & content & repeat(' ', rightPad)
 
-proc truncateToVisibleWidth(s: string, maxVisible: int): string =
+proc truncate(s: string, maxVisible: int, addReset: bool = true): string =
   ## Truncate `s` to at most `maxVisible` visible graphemes
-  ## Preserves ANSI sequences in the kept part
   if maxVisible <= 0:
     return ""
   var visibleCount = 0
@@ -109,6 +109,7 @@ proc truncateToVisibleWidth(s: string, maxVisible: int): string =
       if i < s.len:
         inc i
         foundTerminator = true
+      
       if foundTerminator:
         result.add s[start..<i]
       else:
@@ -120,74 +121,38 @@ proc truncateToVisibleWidth(s: string, maxVisible: int): string =
       result.add s[i..<i+g]
       i += g
       inc visibleCount
-  if i < s.len:
+  if i < s.len and addReset:
     result.add "\e[0m"
 
-
-# Public API
-
-proc newTable*(): Table =
-  ## Creates a new empty table
-  Table(columns: @[], rows: @[])
-
-proc addColumn*(t: Table, title: string = "", width: int = 0, align: Alignment = Left) =
-  ## Adds a column definition
-  ## - `title`: Column header (empty = no header)
-  ## - `width`: Fixed width (0 = auto‑size to content)
-  ## - `align`: Cell alignment (Left, Center, Right)
-  if width < 0:
-    raise newException(ValueError, "Column width cannot be negative")
-  t.columns.add Column(title: title, width: width, align: align)
-
-proc addRow*(t: Table, cells: seq[string]) =
-  ## Adds a row of data. Cells are strings (pre‑format numbers, embed ANSI codes)
-  t.rows.add cells
-
-proc renderTable*(t: Table, separator = false, width: int = 0, outFile: File = stdout) =
-  ## Renders the table to `outFile`
-  ## If `width` > 0, it is used as maximum line width; otherwise terminal width is used
-  ## If no columns were defined, they are automatically created based on the data
-  let rawWidth = if width > 0: width else: terminalWidth()
-  let termWidth = if rawWidth <= 0: 80 else: rawWidth
-
-  # Auto‑create columns if none defined
-  if t.columns.len == 0:
-    if t.rows.len == 0:
-      return
-    var maxCols = 0
-    for row in t.rows:
-      if row.len > maxCols:
-        maxCols = row.len
-    if maxCols == 0:
-      return
-    for i in 0..<maxCols:
-      t.columns.add Column(title: "", width: 0, align: Left)
-
-  # 1. Determine effective column widths
-  var colWidths = newSeq[int](t.columns.len)
-  for i, col in t.columns:
-    if col.width > 0:
-      colWidths[i] = col.width
+proc stripAnsi(s: string): string =
+  ## Remove all ANSI escape sequences from `s`
+  var i = 0
+  while i < s.len:
+    if s[i] == '\e':
+      inc i
+      while i < s.len and s[i] notin {'m', 'H', 'J', 'K', 'A'..'D', 's', 'u'}:
+        inc i
+      if i < s.len:
+        inc i
     else:
-      var w = col.title.visibleLen()
-      for row in t.rows:
-        if i < row.len:
-          let cellw = row[i].visibleLen()
-          if cellw > w: w = cellw
-      colWidths[i] = w
+      result.add s[i]
+      inc i
 
-  # 2. Build separator strings
+proc renderToFile(t: Table, colWidths, colStarts: seq[int], separator: bool, width: int, outFile: File) =
+  ## Render table to a file using string building
+  let shouldTruncate = width > 0
+  let maxWidth = if shouldTruncate: width else: high(int)
+
+  proc prepareForFile(s: string): string =
+    result = stripAnsi(s)
+    if shouldTruncate:
+      result = truncate(result, maxWidth, addReset = false)
+
   let pipe = if separator: "┃" else: ""
   let space = " "
 
-  # 3. Compute line components
-  var topBorder: string
-  var headerLine: string
-  var separatorLine: string
-  var cellLines: seq[string] = @[]
-  var bottomBorder: string
-
   # Build top border
+  var topBorder: string
   if separator:
     topBorder.add "┏"
     for i, w in colWidths:
@@ -197,13 +162,13 @@ proc renderTable*(t: Table, separator = false, width: int = 0, outFile: File = s
       else:
         topBorder.add "┓"
 
-  # Build header line (only if any column has a title)
+  # Build header line
   var hasHeader = false
   for col in t.columns:
     if col.title.len > 0:
       hasHeader = true
       break
-
+  var headerLine: string
   if hasHeader:
     if separator:
       headerLine.add pipe & space
@@ -218,7 +183,8 @@ proc renderTable*(t: Table, separator = false, width: int = 0, outFile: File = s
         if separator:
           headerLine.add space & pipe
 
-  # Build header separator line if there is a header
+  # Build header separator line
+  var separatorLine: string
   if hasHeader:
     if separator:
       separatorLine.add "┣"
@@ -235,6 +201,7 @@ proc renderTable*(t: Table, separator = false, width: int = 0, outFile: File = s
           separatorLine.add " "
 
   # Build each data row line
+  var cellLines: seq[string] = @[]
   for row in t.rows:
     var line: string
     if separator:
@@ -253,6 +220,7 @@ proc renderTable*(t: Table, separator = false, width: int = 0, outFile: File = s
     cellLines.add line
 
   # Build bottom border
+  var bottomBorder: string
   if separator:
     bottomBorder.add "┗"
     for i, w in colWidths:
@@ -262,17 +230,216 @@ proc renderTable*(t: Table, separator = false, width: int = 0, outFile: File = s
       else:
         bottomBorder.add "┛"
 
-  # 4. Truncate lines to terminal width
-  proc truncateToTerminal(s: string): string =
-    truncateToVisibleWidth(s, termWidth)
-
-  # 5. Output
+  # Output
   if separator:
-    outFile.writeLine truncateToTerminal(topBorder)
+    outFile.writeLine prepareForFile(topBorder)
   if hasHeader:
-    outFile.writeLine truncateToTerminal(headerLine)
-    outFile.writeLine truncateToTerminal(separatorLine)
+    outFile.writeLine prepareForFile(headerLine)
+    outFile.writeLine prepareForFile(separatorLine)
   for line in cellLines:
-    outFile.writeLine truncateToTerminal(line)
+    outFile.writeLine prepareForFile(line)
   if separator:
-    outFile.writeLine truncateToTerminal(bottomBorder)
+    outFile.writeLine prepareForFile(bottomBorder)
+
+proc renderToTerminal(t: Table, colWidths, colStarts: seq[int],
+                     separator: bool, termWidth: int, rightBorderX: int) =
+  ## Render table directly to terminal using cursor positioning
+
+  proc writeAt(x: int, s: string) =
+    if x >= termWidth:
+      return
+    let visible = s.visibleLen()
+    if x + visible > termWidth:
+      let maxVisible = termWidth - x
+      if maxVisible > 0:
+        setCursorXPos(x)
+        stdout.write truncate(s, maxVisible, addReset = true)
+    else:
+      setCursorXPos(x)
+      stdout.write s
+
+  # Top border
+  if separator:
+    var line = "┏"
+    for i, w in colWidths:
+      line.add repeat("━", w + 2)
+      if i < colWidths.high:
+        line.add "┳"
+      else:
+        line.add "┓"
+    writeAt(0, line)
+    stdout.write "\n"
+
+  # Header
+  var hasHeader = false
+  for col in t.columns:
+    if col.title.len > 0:
+      hasHeader = true
+      break
+  if hasHeader:
+    if separator:
+      writeAt(0, "┃")
+      writeAt(1, " ")
+    for i, col in t.columns:
+      if colStarts[i] >= termWidth:
+        continue
+      let cellStr = formatCell(col.title, colWidths[i], col.align)
+      writeAt(colStarts[i], cellStr)
+      if separator:
+        let sepPos = colStarts[i] + colWidths[i]
+        if i < t.columns.high:
+          if sepPos + 2 < termWidth:
+            writeAt(sepPos, " ┃ ")
+        else:
+          if rightBorderX < termWidth:
+            writeAt(sepPos, " ┃")
+    stdout.write "\n"
+    if separator:
+      var line = "┣"
+      for i, w in colWidths:
+        line.add repeat("━", w + 2)
+        if i < colWidths.high:
+          line.add "╋"
+        else:
+          line.add "┫"
+      writeAt(0, line)
+    else:
+      for i, w in colWidths:
+        if colStarts[i] >= termWidth:
+          continue
+        writeAt(colStarts[i], repeat("─", w))
+        if i < colWidths.high:
+          writeAt(colStarts[i] + w, " ")
+    stdout.write "\n"
+
+  # Data rows
+  for row in t.rows:
+    if separator:
+      writeAt(0, "┃")
+      writeAt(1, " ")
+    for i, col in t.columns:
+      if colStarts[i] >= termWidth:
+        continue
+      let cellContent = if i < row.len: row[i] else: ""
+      let cellStr = formatCell(cellContent, colWidths[i], col.align)
+      writeAt(colStarts[i], cellStr)
+      if separator:
+        let sepPos = colStarts[i] + colWidths[i]
+        if i < t.columns.high:
+          if sepPos + 2 < termWidth:
+            writeAt(sepPos, " ┃ ")
+        else:
+          if rightBorderX < termWidth:
+            writeAt(sepPos, " ┃")
+    stdout.write "\n"
+
+  # Bottom border
+  if separator:
+    var line = "┗"
+    for i, w in colWidths:
+      line.add repeat("━", w + 2)
+      if i < colWidths.high:
+        line.add "┻"
+      else:
+        line.add "┛"
+    writeAt(0, line)
+    stdout.write "\n"
+
+
+# Public API
+
+proc newTable*(): Table =
+  ## Create a new empty table
+  Table(columns: @[], rows: @[])
+
+proc addColumn*(t: Table, title: string = "", width: int = 0, align: Alignment = Left) =
+  ## Add a column definition
+  ## - `title`: Column header (pre‑format numbers, embed ANSI codes; empty = no header)
+  ## - `width`: Fixed width (0 = auto‑size to content)
+  ## - `align`: Cell alignment (Left, Center, Right)
+  if width < 0:
+    raise newException(ValueError, "Column width cannot be negative")
+  t.columns.add Column(title: title, width: width, align: align)
+
+proc addRow*(t: Table, cells: seq[string]) =
+  ## Add a row of data; cells are strings (pre‑format numbers, embed ANSI codes)
+  t.rows.add cells
+
+proc renderTable*(t: Table, separator = false, width: int = 0, outFile: File = stdout) =
+  if t.columns.len == 0:
+    if t.rows.len == 0:
+      return
+    var maxCols = 0
+    for row in t.rows:
+      if row.len > maxCols:
+        maxCols = row.len
+    if maxCols == 0:
+      return
+    for i in 0..<maxCols:
+      t.columns.add Column(title: "", width: 0, align: Left)
+
+  var colWidths = newSeq[int](t.columns.len)
+  for i, col in t.columns:
+    if col.width > 0:
+      colWidths[i] = col.width
+    else:
+      var w = col.title.visibleLen()
+      for row in t.rows:
+        if i < row.len:
+          let cellw = row[i].visibleLen()
+          if cellw > w: w = cellw
+      colWidths[i] = w
+
+  if width > 0:
+    var currentTotal = 0
+    for i, w in colWidths:
+      currentTotal += w
+      if separator:
+        if i == 0:
+          currentTotal += 2
+        if i < t.columns.high:
+          currentTotal += 3
+        else:
+          currentTotal += 2
+      elif i < t.columns.high:
+        currentTotal += 1
+
+    if width > currentTotal:
+      let extra = width - currentTotal
+      var autoIndices: seq[int]
+      for i, col in t.columns:
+        if col.width == 0:
+          autoIndices.add i
+      if autoIndices.len > 0:
+        let perColumn = extra div autoIndices.len
+        let remainder = extra mod autoIndices.len
+        for j, idx in autoIndices:
+          colWidths[idx] += perColumn
+          if j < remainder:
+            colWidths[idx] += 1
+
+  var colStarts = newSeq[int](t.columns.len)
+  var rightBorderX = 0
+  var currentX = 0
+  if separator:
+    currentX = 2
+  else:
+    currentX = 0
+  for i, w in colWidths:
+    colStarts[i] = currentX
+    currentX += w
+    if separator:
+      if i < t.columns.high:
+        currentX += 3
+      else:
+        currentX += 2
+        rightBorderX = currentX - 1
+    elif i < t.columns.high:
+      currentX += 1
+
+  if outFile == stdout and stdout.isatty:
+    let effectiveWidth = if width > 0: width else: terminalWidth()
+    let termWidth = if effectiveWidth <= 0: 80 else: effectiveWidth
+    renderToTerminal(t, colWidths, colStarts, separator, termWidth, rightBorderX)
+  else:
+    renderToFile(t, colWidths, colStarts, separator, width, outFile)
