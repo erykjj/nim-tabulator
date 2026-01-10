@@ -5,7 +5,7 @@ A Nim library for generating plain‑text tables (with Unicode and ANSI code sup
 ## Features
 
 - **Auto‑column creation** – Define columns explicitly or let the library infer them from your data
-- **Unicode‑aware** – Proper grapheme counting for international text[^*]
+- **Unicode‑aware** – Proper grapheme counting for international text
 - **ANSI code support** – Colors and styling preserved (ignored for width calculation)
 - **Configurable columns** – Fixed or auto‑width, left/center/right alignment
 - **Terminal‑width aware** – Automatically truncates to fit terminal (or custom width)
@@ -120,5 +120,3 @@ t.addRow(@["Auto", "column", "creation"])
 t.addRow(@["Works", "without", "explicit", "columns"])
 t.renderTable()  # Creates 4 left‑aligned auto‑width columns
 ```
-____
-[^*] For scripts with ambiguous width (Hindi, Arabic, etc.), column alignment may be off (depending on terminal)
