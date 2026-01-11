@@ -49,7 +49,7 @@ Output (colors not visible here):
 ┗━━━━━━━━━━━━━━━━━━━━━━┻━━━━━━━━┻━━━━━━━━━━┛
 ```
 
-## API Reference
+## API Reference ([docs](https://github.com/erykjj/nim-tabulator/blob/main/src/htmldocs/tabulator.html))
 
 ### Types
 ```nim
