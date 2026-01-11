@@ -1,6 +1,6 @@
 # tabulator
 
-A Nim library for generating plain-text tables (with Unicode and ANSI code support)
+Nim library for generating plain-text tables (with Unicode and ANSI code support)
 
 ## Features
 
