@@ -148,6 +148,7 @@ These don't help and take up space, IMHO
 ### No cell-overflow/text wrapping
 If necessary, handle this yourself by splitting the text and adding extra rows
 
-____
+[![Static Badge](https://img.shields.io/badge/releases-orange?style=plastic&logo=rss&logoColor=orange&color=black)](https://github.com/erykjj/nim-tabulator/releases.atom)
+
 [^*]: On Windows 10/11, ANSI escape sequences must be enabled in the console (see [here](https://ss64.com/nt/syntax-ansi.html))
 [^#]: For proper display of box‑drawing characters (┏, ┃, ┗, etc.), ensure your terminal/console font supports the Unicode box-drawing block characters (U+2500‑U+257F)
