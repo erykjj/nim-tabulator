@@ -1,8 +1,9 @@
-## tabulator: A Nim library for generating plain‑text tables
-## © 2025 Eryk J. (Infiniti Noncommercial License - see LICENSE for full terms)
+## tabulator: A Nim library for generating plain-text tables
+##            (with Unicode and ANSI code support)
+## © 2025 Eryk J. - Infiniti Noncommercial License (See LICENSE for full terms)
 
 const
-  Version* = "0.3.0"
+  Version* = "0.4.0"
 
 import
   std/[terminal, unicode, strutils, math]
