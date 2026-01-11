@@ -11,6 +11,11 @@
 ### Removed
 
 ____
+## [v0.7.0] - 2026-01-11
+### Changed
+
+- Changed to MIT license for distribution
+
 ## [v0.5.0] - 2026-01-11
 ### Changed
 
@@ -40,6 +45,7 @@ ____
 - Initial release
 
 ____
+[v0.7.0]:https://github.com/erykjj/tabulator/releases/tag/v0.7.0
 [v0.5.0]:https://github.com/erykjj/tabulator/releases/tag/v0.5.0
 [v0.3.0]:https://github.com/erykjj/tabulator/releases/tag/v0.3.0
 [v0.2.0]:https://github.com/erykjj/tabulator/releases/tag/v0.2.0
