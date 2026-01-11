@@ -1,21 +1,11 @@
 ## tabulator: A Nim library for generating plain‑text tables
-##
-## Features:
-## - Auto‑column creation
-## - Unicode and ANSI code support
-## - Configurable alignvar f: File
-# if open(f, "test.txt", fmWrite):
-#   t.renderTable(separator = true, outFile = f)
-#   close(f)ment and widths
-## - Terminal‑width aware truncation
-##
-## License: Infiniti Noncommercial License (see LICENSE for full terms)
-
-import
-  std/[terminal, unicode, strutils, math]
+## © 2025 Eryk J. (Infiniti Noncommercial License - see LICENSE for full terms)
 
 const
   Version* = "0.3.0"
+
+import
+  std/[terminal, unicode, strutils, math]
 
 type
   Alignment* = enum
@@ -345,6 +335,10 @@ proc addRow*(t: Table, cells: seq[string]) =
   t.rows.add cells
 
 proc renderTable*(t: Table, separator = false, width: int = 0, outFile: File = stdout) =
+  ## Render the table
+  ## - `separator`: If true, adds box‑drawing borders between columns
+  ## - `width`: Maximum table width (0 = use terminal width for terminal, no limit for files)
+  ## - `outFile`: Output file (default stdout)
   if t.columns.len == 0:
     if t.rows.len == 0:
       return
