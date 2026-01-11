@@ -85,3 +85,15 @@ t6.addRow(@["", "Another test with \e[1mANSI\e[0m codes that don't affect width"
 
 t6.renderTable(separator = true, width=160)
 t6.renderTable(separator = false, width=160)
+
+echo "\n=== Quick start test ==="
+var t7 = newTable()
+t7.addColumn("Product", width = 20)
+t7.addColumn("Price", align = Right)
+t7.addColumn("In Stock", align = Center)
+
+t7.addRow(@["Apple", "$2.50", "\e[32myes\e[0m"])
+t7.addRow(@["Banana", "$1.20", "no"])
+t7.addRow(@["Cherry", "$15.00", "\e[31mlow\e[0m"])
+
+t7.renderTable(separator = true)
