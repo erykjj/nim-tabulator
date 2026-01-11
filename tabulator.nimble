@@ -1,5 +1,5 @@
 # Package
-version       = "0.4.0"
+version       = "0.5.0"
 author        = "Eryk J."
 description   = "A Nim library for generating plain-text tables (with Unicode and ANSI code support)"
 license       = "Infiniti Noncommercial License (https://github.com/erykjj/tabulator/blob/main/LICENSE.md)"
