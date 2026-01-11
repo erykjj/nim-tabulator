@@ -6,6 +6,9 @@
 
 ### Changed
 
+- Made tables with and without separator align equally
+  - Separator only for visuals
+
 ### Fixed
 
 ### Removed
