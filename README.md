@@ -12,7 +12,7 @@ A Nim library for generating plain-text tables (with Unicode and ANSI code suppo
 - **Clean output** – Optional box‑drawing borders with proper spacing[^#]
 - **No external dependencies** – Uses only Nim standard library
 
-  <img src="screenshots/file.png" width=350>
+  <img src="screenshots/file.png" width=350><br />
 
   <img src="screenshots/terminal.png" width=350>
 
