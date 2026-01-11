@@ -6,10 +6,10 @@ A Nim library for generating plain-text tables (with Unicode and ANSI code suppo
 
 - **Auto‑column creation** – Define columns explicitly or let the library infer them from your data
 - **Unicode‑aware** – Proper grapheme counting for international text
-- **ANSI code support** – Colors and styling preserved
+- **ANSI code support** – Colors and styling preserved[^*]
 - **Configurable columns** – Fixed or auto‑width, left/center/right alignment
 - **Terminal‑width aware** – Automatically truncates to fit terminal (or custom width)
-- **Clean output** – Optional box‑drawing borders with proper spacing
+- **Clean output** – Optional box‑drawing borders with proper spacing[^#]
 - **No external dependencies** – Uses only Nim standard library
 
 ## Installation
@@ -143,3 +143,7 @@ These don't help and take up space, IMHO
 
 ### No cell-overflow/text wrapping
 If necessary, handle this yourself by splitting the text and adding extra rows
+
+____
+[^*] On Windows 10/11, ANSI escape sequences must be enabled in the console (see [here](https://ss64.com/nt/syntax-ansi.html))
+[^#] For proper display of box‑drawing characters (┏, ┃, ┗, etc.), ensure your terminal/console font supports the Unicode box-drawing block characters (U+2500‑U+257F)
