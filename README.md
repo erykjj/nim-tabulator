@@ -22,6 +22,7 @@ Copy `tabulator.nim` into your project.
 import tabulator
 
 var t = newTable()
+
 t.addColumn("Product", width = 20)
 t.addColumn("Price", align = Right)
 t.addColumn("In Stock", align = Center)
@@ -33,7 +34,7 @@ t.addRow(@["Cherry", "$15.00", "\e[31mlow\e[0m"])
 t.renderTable(separator = true)
 ```
 
-Output (colors missing):
+Output (colors not visible here):
 ```
 ┏━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━┓
 ┃ Product              ┃  Price ┃ In Stock ┃
@@ -101,14 +102,14 @@ t.renderTable(separator = true)
 When outputting to a terminal, `tabulator` uses cursor positioning for accurate display of all Unicode scripts (including East‑Asian and complex scripts like Hindi, Arabic)
 ```nim
 # Terminal gets cursor‑based output
-t.renderTable(separator = true)
+t.renderTable()
 ```
 
 Provide a file name for text-file output:
 ```nim
 # Files get clean text output (ANSI stripped)
 let f = open("table.txt", fmWrite)
-t.renderTable(separator = true, outFile = f)
+t.renderTable(outFile = f)
 close(f)
 ```
 
