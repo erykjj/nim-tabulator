@@ -33,6 +33,7 @@ t.renderTable(separator = true)
 var f: File
 if open(f, "tabulator_test.txt", fmWrite):
   t.renderTable(separator = true, outFile = f)
+  t.renderTable(separator = false, outFile = f)
   close(f)
 
 echo "\n=== Testing with separator=false ==="
@@ -82,4 +83,5 @@ t6.addRow(@["A", "This is a moderately long piece of text that will force auto-w
 t6.addRow(@["B", "Short", "1234567890", "\e[31m-15\e[0m"])
 t6.addRow(@["", "Another test with \e[1mANSI\e[0m codes that don't affect width", "Hi", "9999"])
 
-t6.renderTable(separator = true)
+t6.renderTable(separator = true, width=160)
+t6.renderTable(separator = false, width=160)
