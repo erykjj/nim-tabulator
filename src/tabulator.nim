@@ -1,4 +1,4 @@
-## tabulator: A Nim library for generating plain-text tables
+## tabulator: Nim library for generating plain-text tables
 ##            (with Unicode and ANSI code support)
 ## MIT © 2026 Eryk J
 
