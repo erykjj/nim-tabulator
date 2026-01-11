@@ -222,9 +222,12 @@ proc renderToFile(t: Table, colWidths, colStarts: seq[int], borderChar: string, 
     outFile.writeLine prepareForFile(bottomBorder)
 
 proc renderToTerminal(t: Table, colWidths, colStarts: seq[int], borderChar: string, termWidth: int, rightBorderX: int) =
+  ## Render table directly to terminal using cursor positioning
+  ## Each cell is printed at its precise column position for correct Unicode handling
 
   proc writeAt(x: int, s: string) =
-    if x >= termWidth: return
+    if x >= termWidth:
+      return
     let visible = s.visibleLen()
     if x + visible > termWidth:
       let maxVisible = termWidth - x
@@ -256,15 +259,20 @@ proc renderToTerminal(t: Table, colWidths, colStarts: seq[int], borderChar: stri
 
   # Header line
   if hasHeader:
-    var line = borderChar & " "
+    writeAt(0, borderChar)
+    writeAt(1, " ")
     for i, col in t.columns:
-      let cell = formatCell(col.title, colWidths[i], col.align)
-      line.add cell
+      if colStarts[i] >= termWidth:
+        continue
+      let cellStr = formatCell(col.title, colWidths[i], col.align)
+      writeAt(colStarts[i], cellStr)
+      let sepPos = colStarts[i] + colWidths[i]
       if i < t.columns.high:
-        line.add " " & borderChar & " "
+        if sepPos + 2 < termWidth:
+          writeAt(sepPos, " " & borderChar & " ")
       else:
-        line.add " " & borderChar
-    writeAt(0, line)
+        if rightBorderX < termWidth:
+          writeAt(sepPos, " " & borderChar)
     stdout.write "\n"
 
   # Header separator line
@@ -279,26 +287,33 @@ proc renderToTerminal(t: Table, colWidths, colStarts: seq[int], borderChar: stri
           line.add "┫"
       writeAt(0, line)
     else:
-      var line = "  "
+      writeAt(0, " ")
+      writeAt(1, " ")
       for i, w in colWidths:
-        line.add repeat("─", w)
+        if colStarts[i] >= termWidth:
+          continue
+        writeAt(colStarts[i], repeat("─", w))
         if i < colWidths.high:
-          line.add "   "
-      writeAt(0, line)
+          writeAt(colStarts[i] + w, "   ")
     stdout.write "\n"
 
   # Data rows
   for row in t.rows:
-    var line = borderChar & " "
+    writeAt(0, borderChar)
+    writeAt(1, " ")
     for i, col in t.columns:
+      if colStarts[i] >= termWidth:
+        continue
       let cellContent = if i < row.len: row[i] else: ""
-      let cell = formatCell(cellContent, colWidths[i], col.align)
-      line.add cell
+      let cellStr = formatCell(cellContent, colWidths[i], col.align)
+      writeAt(colStarts[i], cellStr)
+      let sepPos = colStarts[i] + colWidths[i]
       if i < t.columns.high:
-        line.add " " & borderChar & " "
+        if sepPos + 2 < termWidth:
+          writeAt(sepPos, " " & borderChar & " ")
       else:
-        line.add " " & borderChar
-    writeAt(0, line)
+        if rightBorderX < termWidth:
+          writeAt(sepPos, " " & borderChar)
     stdout.write "\n"
 
   # Bottom border if borderChar is "┃"
