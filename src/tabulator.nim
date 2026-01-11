@@ -15,7 +15,7 @@ import
   std/[terminal, unicode, strutils, math]
 
 const
-  Version* = "0.2.0"
+  Version* = "0.3.0"
 
 type
   Alignment* = enum
@@ -138,8 +138,7 @@ proc stripAnsi(s: string): string =
       result.add s[i]
       inc i
 
-proc renderToFile(t: Table, colWidths, colStarts: seq[int], separator: bool, width: int, outFile: File) =
-  ## Render table to a file using string building
+proc renderToFile(t: Table, colWidths, colStarts: seq[int], borderChar: string, width: int, outFile: File) =
   let shouldTruncate = width > 0
   let maxWidth = if shouldTruncate: width else: high(int)
 
@@ -148,12 +147,9 @@ proc renderToFile(t: Table, colWidths, colStarts: seq[int], separator: bool, wid
     if shouldTruncate:
       result = truncate(result, maxWidth, addReset = false)
 
-  let pipe = if separator: "┃" else: ""
-  let space = " "
-
-  # Build top border
+  # Top border if borderChar is "┃"
   var topBorder: string
-  if separator:
+  if borderChar == "┃":
     topBorder.add "┏"
     for i, w in colWidths:
       topBorder.add repeat("━", w + 2)
@@ -162,31 +158,29 @@ proc renderToFile(t: Table, colWidths, colStarts: seq[int], separator: bool, wid
       else:
         topBorder.add "┓"
 
-  # Build header line
+  # Determine if there's a header
   var hasHeader = false
   for col in t.columns:
     if col.title.len > 0:
       hasHeader = true
       break
+
+  # Header line
   var headerLine: string
   if hasHeader:
-    if separator:
-      headerLine.add pipe & space
+    headerLine.add borderChar & " "
     for i, col in t.columns:
       let cell = formatCell(col.title, colWidths[i], col.align)
       headerLine.add cell
       if i < t.columns.high:
-        headerLine.add space
-        if separator:
-          headerLine.add pipe & space
+        headerLine.add " " & borderChar & " "
       else:
-        if separator:
-          headerLine.add space & pipe
+        headerLine.add " " & borderChar
 
-  # Build header separator line
+  # Header separator line
   var separatorLine: string
   if hasHeader:
-    if separator:
+    if borderChar == "┃":
       separatorLine.add "┣"
       for i, w in colWidths:
         separatorLine.add repeat("━", w + 2)
@@ -195,33 +189,29 @@ proc renderToFile(t: Table, colWidths, colStarts: seq[int], separator: bool, wid
         else:
           separatorLine.add "┫"
     else:
+      separatorLine.add "  "
       for i, w in colWidths:
         separatorLine.add repeat("─", w)
         if i < colWidths.high:
-          separatorLine.add " "
+          separatorLine.add "   "
 
-  # Build each data row line
+  # Data rows
   var cellLines: seq[string] = @[]
   for row in t.rows:
-    var line: string
-    if separator:
-      line.add pipe & space
+    var line = borderChar & " "
     for i, col in t.columns:
       let cellContent = if i < row.len: row[i] else: ""
       let cell = formatCell(cellContent, colWidths[i], col.align)
       line.add cell
       if i < t.columns.high:
-        line.add space
-        if separator:
-          line.add pipe & space
+        line.add " " & borderChar & " "
       else:
-        if separator:
-          line.add space & pipe
+        line.add " " & borderChar
     cellLines.add line
 
-  # Build bottom border
+  # Bottom border if borderChar is "┃"
   var bottomBorder: string
-  if separator:
+  if borderChar == "┃":
     bottomBorder.add "┗"
     for i, w in colWidths:
       bottomBorder.add repeat("━", w + 2)
@@ -231,23 +221,20 @@ proc renderToFile(t: Table, colWidths, colStarts: seq[int], separator: bool, wid
         bottomBorder.add "┛"
 
   # Output
-  if separator:
+  if borderChar == "┃":
     outFile.writeLine prepareForFile(topBorder)
   if hasHeader:
     outFile.writeLine prepareForFile(headerLine)
     outFile.writeLine prepareForFile(separatorLine)
   for line in cellLines:
     outFile.writeLine prepareForFile(line)
-  if separator:
+  if borderChar == "┃":
     outFile.writeLine prepareForFile(bottomBorder)
 
-proc renderToTerminal(t: Table, colWidths, colStarts: seq[int],
-                     separator: bool, termWidth: int, rightBorderX: int) =
-  ## Render table directly to terminal using cursor positioning
+proc renderToTerminal(t: Table, colWidths, colStarts: seq[int], borderChar: string, termWidth: int, rightBorderX: int) =
 
   proc writeAt(x: int, s: string) =
-    if x >= termWidth:
-      return
+    if x >= termWidth: return
     let visible = s.visibleLen()
     if x + visible > termWidth:
       let maxVisible = termWidth - x
@@ -258,8 +245,8 @@ proc renderToTerminal(t: Table, colWidths, colStarts: seq[int],
       setCursorXPos(x)
       stdout.write s
 
-  # Top border
-  if separator:
+  # Top border if borderChar is "┃"
+  if borderChar == "┃":
     var line = "┏"
     for i, w in colWidths:
       line.add repeat("━", w + 2)
@@ -270,31 +257,29 @@ proc renderToTerminal(t: Table, colWidths, colStarts: seq[int],
     writeAt(0, line)
     stdout.write "\n"
 
-  # Header
+  # Determine if there's a header
   var hasHeader = false
   for col in t.columns:
     if col.title.len > 0:
       hasHeader = true
       break
+
+  # Header line
   if hasHeader:
-    if separator:
-      writeAt(0, "┃")
-      writeAt(1, " ")
+    var line = borderChar & " "
     for i, col in t.columns:
-      if colStarts[i] >= termWidth:
-        continue
-      let cellStr = formatCell(col.title, colWidths[i], col.align)
-      writeAt(colStarts[i], cellStr)
-      if separator:
-        let sepPos = colStarts[i] + colWidths[i]
-        if i < t.columns.high:
-          if sepPos + 2 < termWidth:
-            writeAt(sepPos, " ┃ ")
-        else:
-          if rightBorderX < termWidth:
-            writeAt(sepPos, " ┃")
+      let cell = formatCell(col.title, colWidths[i], col.align)
+      line.add cell
+      if i < t.columns.high:
+        line.add " " & borderChar & " "
+      else:
+        line.add " " & borderChar
+    writeAt(0, line)
     stdout.write "\n"
-    if separator:
+
+  # Header separator line
+  if hasHeader:
+    if borderChar == "┃":
       var line = "┣"
       for i, w in colWidths:
         line.add repeat("━", w + 2)
@@ -304,37 +289,30 @@ proc renderToTerminal(t: Table, colWidths, colStarts: seq[int],
           line.add "┫"
       writeAt(0, line)
     else:
+      var line = "  "
       for i, w in colWidths:
-        if colStarts[i] >= termWidth:
-          continue
-        writeAt(colStarts[i], repeat("─", w))
+        line.add repeat("─", w)
         if i < colWidths.high:
-          writeAt(colStarts[i] + w, " ")
+          line.add "   "
+      writeAt(0, line)
     stdout.write "\n"
 
   # Data rows
   for row in t.rows:
-    if separator:
-      writeAt(0, "┃")
-      writeAt(1, " ")
+    var line = borderChar & " "
     for i, col in t.columns:
-      if colStarts[i] >= termWidth:
-        continue
       let cellContent = if i < row.len: row[i] else: ""
-      let cellStr = formatCell(cellContent, colWidths[i], col.align)
-      writeAt(colStarts[i], cellStr)
-      if separator:
-        let sepPos = colStarts[i] + colWidths[i]
-        if i < t.columns.high:
-          if sepPos + 2 < termWidth:
-            writeAt(sepPos, " ┃ ")
-        else:
-          if rightBorderX < termWidth:
-            writeAt(sepPos, " ┃")
+      let cell = formatCell(cellContent, colWidths[i], col.align)
+      line.add cell
+      if i < t.columns.high:
+        line.add " " & borderChar & " "
+      else:
+        line.add " " & borderChar
+    writeAt(0, line)
     stdout.write "\n"
 
-  # Bottom border
-  if separator:
+  # Bottom border if borderChar is "┃"
+  if borderChar == "┃":
     var line = "┗"
     for i, w in colWidths:
       line.add repeat("━", w + 2)
@@ -393,17 +371,12 @@ proc renderTable*(t: Table, separator = false, width: int = 0, outFile: File = s
 
   if width > 0:
     var currentTotal = 0
-    for i, w in colWidths:
+    currentTotal += 2
+    for w in colWidths:
       currentTotal += w
-      if separator:
-        if i == 0:
-          currentTotal += 2
-        if i < t.columns.high:
-          currentTotal += 3
-        else:
-          currentTotal += 2
-      elif i < t.columns.high:
-        currentTotal += 1
+    if t.columns.len > 1:
+      currentTotal += (t.columns.len - 1) * 3
+    currentTotal += 2
 
     if width > currentTotal:
       let extra = width - currentTotal
@@ -421,26 +394,21 @@ proc renderTable*(t: Table, separator = false, width: int = 0, outFile: File = s
 
   var colStarts = newSeq[int](t.columns.len)
   var rightBorderX = 0
-  var currentX = 0
-  if separator:
-    currentX = 2
-  else:
-    currentX = 0
+  var currentX = 2
   for i, w in colWidths:
     colStarts[i] = currentX
     currentX += w
-    if separator:
-      if i < t.columns.high:
-        currentX += 3
-      else:
-        currentX += 2
-        rightBorderX = currentX - 1
-    elif i < t.columns.high:
-      currentX += 1
+    if i < t.columns.high:
+      currentX += 3
+    else:
+      currentX += 2
+      rightBorderX = currentX - 1
+
+  let borderChar = if separator: "┃" else: " "
 
   if outFile == stdout and stdout.isatty:
     let effectiveWidth = if width > 0: width else: terminalWidth()
     let termWidth = if effectiveWidth <= 0: 80 else: effectiveWidth
-    renderToTerminal(t, colWidths, colStarts, separator, termWidth, rightBorderX)
+    renderToTerminal(t, colWidths, colStarts, borderChar, termWidth, rightBorderX)
   else:
-    renderToFile(t, colWidths, colStarts, separator, width, outFile)
+    renderToFile(t, colWidths, colStarts, borderChar, width, outFile)
