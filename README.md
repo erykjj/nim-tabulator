@@ -18,7 +18,11 @@ Nim library for generating plain-text tables (with Unicode and ANSI code support
 
 ## Installation
 
-Copy `tabulator.nim` into your project.
+```bash
+nimble install tabulator
+```
+
+Or, copy `tabulator.nim` into your project.
 
 ## Quick Start
 
