@@ -6,6 +6,8 @@
 
 ### Changed
 
+- Various improvements and minor fixes
+
 ### Fixed
 
 ### Removed
