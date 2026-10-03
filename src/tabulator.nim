@@ -69,7 +69,7 @@ proc ansiEnd(s: string, i: int): int =
 proc isZeroWidth(cp: int): bool =
   if cp < 0x0300: return false
   # Combining diacritics & marks
-  if cp >= 0x0300 and cp <= 0x036F: return true
+  if cp <= 0x036F: return true
   if cp >= 0x0483 and cp <= 0x0489: return true
   if cp >= 0x0591 and cp <= 0x05BD: return true
   if cp == 0x05BF: return true
@@ -117,7 +117,7 @@ proc isZeroWidth(cp: int): bool =
 
 proc isWide(cp: int): bool =
   if cp < 0x1100: return false
-  if cp >= 0x1100 and cp <= 0x115F: return true
+  if cp <= 0x115F: return true
   if cp >= 0x2E80 and cp <= 0x303E: return true
   if cp >= 0x3041 and cp <= 0x33FF: return true
   if cp >= 0x3400 and cp <= 0x4DBF: return true
@@ -143,8 +143,11 @@ proc runeWidth(cp: int): int =
   1
 
 proc visibleLen*(s: string): int =
-  ## Display width of `s`, ignoring ANSI escapes. Uses a lightweight
-  ## wcwidth approximation (see `runeWidth` above).
+  ## Display width of `s`, ignoring ANSI escapes.
+  ##
+  ## **Internal helper**. Exported for tests and for
+  ## advanced users writing ANSI-aware text tools.
+  ## Prefer using `renderTable`, which calls this internally.
   var i = 0
   while i < s.len:
     if s[i] == '\e':
@@ -163,6 +166,10 @@ proc visibleLen*(s: string): int =
 proc stripAnsi*(s: string): string =
   ## Remove all ANSI escape sequences from `s`.
   ## A bare/invalid ESC is preserved (it is not a sequence).
+  ##
+  ## **Internal helper**. Exported for tests and for
+  ## advanced users writing ANSI-aware text tools.
+  ## Prefer using `renderTable`, which calls this internally.
   var i = 0
   while i < s.len:
     if s[i] == '\e':
@@ -219,36 +226,13 @@ proc formatCell(content: string, width: int, align: Alignment): string =
       return ""
     if width == 1:
       return "…"
-    var used = 0
-    var i = 0
-    var buf = ""
-    var sawEscape = false
-    while i < content.len and used < width - 1:
-      if content[i] == '\e':
-        let stop = ansiEnd(content, i)
-        if stop > i:
-          buf.add content[i ..< stop]
-          sawEscape = true
-          i = stop
-        else:
-          buf.add '\e'
-          inc used
-          inc i
-          sawEscape = true
-      else:
-        let g = content.runeLenAt(i)
-        let cp = content.runeAt(i).int
-        let w = runeWidth(cp)
-        if used + w > width - 1:
-          break
-        buf.add content[i ..< i + g]
-        used += w
-        i += g
+    let cut = truncate(content, width - 1, addReset = false)
+    var buf = cut
     buf.add "…"
-    # Pad to `width` in case a wide char didn't fit and left a gap.
-    if used + 1 < width:
-      buf.add repeat(' ', width - used - 1)
-    if sawEscape:
+    let used = buf.visibleLen()
+    if used < width:
+      buf.add repeat(' ', width - used)
+    if content.find('\e') >= 0 and cut.find('\e') >= 0:
       buf.add "\e[0m"
     return buf
   else:
@@ -275,6 +259,24 @@ proc overhead(n: int): int =
   if n > 1:
     result += (n - 1) * 3
 
+proc naturalWidth(col: Column, i: int, rows: seq[seq[string]]): int =
+  ## Natural (unconstrained) width of column `i`.
+  if col.width > 0:
+    return col.width
+  var w = col.title.visibleLen()
+  for row in rows:
+    if i < row.len:
+      let cw = row[i].visibleLen()
+      if cw > w: w = cw
+  max(1, w)
+
+proc hasAnyTitle(columns: seq[Column]): bool =
+  ## True if at least one column has a non-empty title.
+  for col in columns:
+    if col.title.len > 0:
+      return true
+  false
+
 proc computeColumnWidths(columns: seq[Column], rows: seq[seq[string]],
                          target: int): seq[int] =
   ## Return the final per-column widths, given a target total width
@@ -292,15 +294,7 @@ proc computeColumnWidths(columns: seq[Column], rows: seq[seq[string]],
   result = newSeq[int](columns.len)
 
   for i, col in columns:
-    if col.width > 0:
-      result[i] = col.width
-    else:
-      var w = col.title.visibleLen()
-      for row in rows:
-        if i < row.len:
-          let cw = row[i].visibleLen()
-          if cw > w: w = cw
-      result[i] = max(1, w)
+    result[i] = naturalWidth(col, i, rows)
 
   if target <= 0:
     return
@@ -362,22 +356,31 @@ proc prepareForFile(s: string, maxWidth: int, shouldTruncate: bool): string =
     result = truncate(result, maxWidth, addReset = false)
   result = result.strip(leading = false, trailing = true)
 
+proc borderLine(left, mid, right, fill: string, widths: seq[int]): string =
+  ## Build a horizontal border. Two shapes are used:
+  ##   * boxed (`mid` non-empty): `left` + fill×(w+2) joined by `mid` +
+  ##     `right`.
+  ##   * unboxed (`mid` empty): `left` + fill×w with "   " between
+  ##     columns.
+  result = left
+  for i, w in widths:
+    if mid.len > 0:
+      result.add repeat(fill, w + 2)
+      result.add (if i < widths.high: mid else: right)
+    else:
+      result.add repeat(fill, w)
+      if i < widths.high:
+        result.add "   "
+
 proc renderToFile(t: Table, colWidths: seq[int], borderChar: string,
                   outFile: File) =
   ## File output: full table, no clipping, ANSI stripped, no trailing
   ## whitespace. `colWidths` already reflects any target width chosen by
   ## the caller; file output never re-clips.
-  var hasHeader = false
-  for col in t.columns:
-    if col.title.len > 0:
-      hasHeader = true
-      break
+  let hasHeader = hasAnyTitle(t.columns)
 
   if borderChar == "┃":
-    var topBorder = "┏"
-    for i, w in colWidths:
-      topBorder.add repeat("━", w + 2)
-      topBorder.add (if i < colWidths.high: "┳" else: "┓")
+    let topBorder = borderLine("┏", "┳", "┓", "━", colWidths)
     outFile.writeLine prepareForFile(topBorder, high(int), false)
 
   if hasHeader:
@@ -389,17 +392,10 @@ proc renderToFile(t: Table, colWidths: seq[int], borderChar: string,
     outFile.writeLine prepareForFile(headerLine, high(int), false)
 
     if borderChar == "┃":
-      var sep = "┣"
-      for i, w in colWidths:
-        sep.add repeat("━", w + 2)
-        sep.add (if i < colWidths.high: "╋" else: "┫")
+      let sep = borderLine("┣", "╋", "┫", "━", colWidths)
       outFile.writeLine prepareForFile(sep, high(int), false)
     else:
-      var sep = "  "
-      for i, w in colWidths:
-        sep.add repeat("─", w)
-        if i < colWidths.high:
-          sep.add "   "
+      let sep = borderLine("  ", "", "", "─", colWidths)
       outFile.writeLine prepareForFile(sep, high(int), false)
 
   for row in t.rows:
@@ -412,10 +408,7 @@ proc renderToFile(t: Table, colWidths: seq[int], borderChar: string,
     outFile.writeLine prepareForFile(line, high(int), false)
 
   if borderChar == "┃":
-    var bot = "┗"
-    for i, w in colWidths:
-      bot.add repeat("━", w + 2)
-      bot.add (if i < colWidths.high: "┻" else: "┛")
+    let bot = borderLine("┗", "┻", "┛", "━", colWidths)
     outFile.writeLine prepareForFile(bot, high(int), false)
 
 proc renderToTerminal(t: Table, colWidths, colStarts: seq[int],
@@ -438,18 +431,11 @@ proc renderToTerminal(t: Table, colWidths, colStarts: seq[int],
       stdout.write s
 
   if borderChar == "┃":
-    var line = "┏"
-    for i, w in colWidths:
-      line.add repeat("━", w + 2)
-      line.add (if i < colWidths.high: "┳" else: "┓")
+    let line = borderLine("┏", "┳", "┓", "━", colWidths)
     writeAt(0, line)
     stdout.write "\n"
 
-  var hasHeader = false
-  for col in t.columns:
-    if col.title.len > 0:
-      hasHeader = true
-      break
+  let hasHeader = hasAnyTitle(t.columns)
 
   if hasHeader:
     writeAt(0, borderChar)
@@ -468,10 +454,7 @@ proc renderToTerminal(t: Table, colWidths, colStarts: seq[int],
     stdout.write "\n"
 
     if borderChar == "┃":
-      var line = "┣"
-      for i, w in colWidths:
-        line.add repeat("━", w + 2)
-        line.add (if i < colWidths.high: "╋" else: "┫")
+      let line = borderLine("┣", "╋", "┫", "━", colWidths)
       writeAt(0, line)
     else:
       writeAt(0, " ")
@@ -501,10 +484,7 @@ proc renderToTerminal(t: Table, colWidths, colStarts: seq[int],
     stdout.write "\n"
 
   if borderChar == "┃":
-    var line = "┗"
-    for i, w in colWidths:
-      line.add repeat("━", w + 2)
-      line.add (if i < colWidths.high: "┻" else: "┛")
+    let line = borderLine("┗", "┻", "┛", "━", colWidths)
     writeAt(0, line)
     stdout.write "\n"
 
@@ -556,6 +536,22 @@ proc renderTable*(t: Table, separator = false, width: int = 0,
   ##     exceeds `min(width, terminalWidth())` when `width > 0`.
   ##   * File output is not clipped; the file contains the whole table
   ##     at its laid-out width.
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##   import tabulator
+  ##
+  ##   var t = newTable()
+  ##   t.addColumn("Product", width = 20)
+  ##   t.addColumn("Price", align = Right)
+  ##   t.addColumn("In Stock", align = Center)
+  ##
+  ##   t.addRow(@["Apple", "$2.50", "yes"])
+  ##   t.addRow(@["Banana", "$1.20", "no"])
+  ##   t.addRow(@["Cherry", "$15.00", "low"])
+  ##
+  ##   t.renderTable(separator = true)
 
   let isTerminal = outFile == stdout and stdout.isatty
 
@@ -587,38 +583,26 @@ proc renderTable*(t: Table, separator = false, width: int = 0,
     let term = if tw > 0: tw else: 80
     clipWidth = term
     if target == 0:
-      var natural = 4
+      var natural = overhead(columns.len)
       for i, col in columns:
-        if col.width > 0:
-          natural += col.width
-        else:
-          var w = col.title.visibleLen()
-          for row in t.rows:
-            if i < row.len:
-              let cw = row[i].visibleLen()
-              if cw > w: w = cw
-          natural += max(1, w)
-        if i < columns.high:
-          natural += 3
+        natural += naturalWidth(col, i, t.rows)
       if natural > term:
         target = term
 
   let colWidths = computeColumnWidths(columns, t.rows, target)
-
-  var colStarts = newSeq[int](columns.len)
-  var currentX = 2
-  for i, w in colWidths:
-    colStarts[i] = currentX
-    currentX += w
-    if i < columns.high:
-      currentX += 3
-    else:
-      currentX += 2
-
   let borderChar = if separator: "┃" else: " "
   let view = Table(columns: columns, rows: t.rows)
 
   if isTerminal:
+    var colStarts = newSeq[int](columns.len)
+    var currentX = 2
+    for i, w in colWidths:
+      colStarts[i] = currentX
+      currentX += w
+      if i < columns.high:
+        currentX += 3
+      else:
+        currentX += 2
     renderToTerminal(view, colWidths, colStarts, borderChar, clipWidth)
   else:
     renderToFile(view, colWidths, borderChar, outFile)
