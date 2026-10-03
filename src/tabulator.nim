@@ -142,7 +142,7 @@ proc runeWidth(cp: int): int =
   if isWide(cp): return 2
   1
 
-proc visibleLen(s: string): int =
+proc visibleLen*(s: string): int =
   ## Display width of `s`, ignoring ANSI escapes. Uses a lightweight
   ## wcwidth approximation (see `runeWidth` above).
   var i = 0
@@ -160,7 +160,7 @@ proc visibleLen(s: string): int =
       result += runeWidth(cp)
       i += g
 
-proc stripAnsi(s: string): string =
+proc stripAnsi*(s: string): string =
   ## Remove all ANSI escape sequences from `s`.
   ## A bare/invalid ESC is preserved (it is not a sequence).
   var i = 0
