@@ -5,11 +5,12 @@ Nim library for generating plain-text tables (with Unicode and ANSI code support
 ## Features
 
 - **Auto‑column creation** – Define columns explicitly or let the library infer them from your data
-- **Unicode‑aware** – Proper grapheme counting for international text
-- **ANSI code support** – Colors and styling preserved[^*]
+- **Unicode‑aware** – Correct display width for CJK, fullwidth forms, emoji, skin‑tone modifiers, combining marks, and zero‑width joiners
+- **ANSI code support** – Colors and styling preserved in terminal output; stripped cleanly for file output[^*]
 - **Configurable columns** – Fixed or auto‑width, left/center/right alignment
-- **Terminal‑width aware** – Automatically truncates to fit terminal (or custom width)
-- **Clean output** – Optional box‑drawing borders with proper spacing[^#]
+- **Terminal‑aware output** – Natural width by default; shrinks only if the table would exceed the terminal
+- **Clean output** – Optional box‑drawing borders, no trailing whitespace in file output[^#]
+- **Hyperlinks** – Passes through OSC 8 hyperlink sequences for terminals that support them
 - **No external dependencies** – Uses only Nim standard library
 
   <img src="screenshots/file.png" width=350><br />
@@ -57,8 +58,18 @@ Output (colors not visible here):
 
 ### Types
 ```nim
-type Alignment* = enum Left, Center, Right
+type Alignment* = enum
+  Left    ## Text is left-padded (default)
+  Center  ## Text is centred within the column width
+  Right   ## Text is right-padded
+
 type Table* = ref object  # Opaque, create with newTable()
+```
+
+### Consts
+```nim
+const Version* = "1.0.0"
+  ## For checking the current version programmatically
 ```
 
 ### Procedures
@@ -70,7 +81,8 @@ proc addColumn(t: Table, title: string = "", width: int = 0, align: Alignment = 
   ## Add a column definition
   ## - `title`: Column header (pre‑format with embedded ANSI codes)
   ##   - if ALL column titles are empty = no header
-  ## - `width`: Fixed width (0 = auto‑size to content)
+  ## - `width`: Fixed width in display cells (0 = auto‑size to content)
+  ##   - `1` produces "…" when content is longer; `2` produces "x…"; etc.
   ## - `align`: Cell alignment (Left, Center, Right)
 
 proc addRow(t: Table, cells: seq[string])
@@ -79,8 +91,21 @@ proc addRow(t: Table, cells: seq[string])
 proc renderTable(t: Table, separator = false, width: int = 0, outFile: File = stdout)
   ## Render the table
   ## - `separator`: If true, adds box‑drawing borders between columns
-  ## - `width`: Maximum line width (0 = use terminal width for terminal, no limit for files)
+  ## - `width`: Table width target
+  ##   - `0` (default) → natural width. On a terminal, shrinks if natural
+  ##     exceeds terminal width; never stretches.
+  ##   - `> 0` → table is exactly that width (auto columns grow or shrink).
+  ##     Fixed columns never resize.
   ## - `outFile`: Output file (default stdout)
+```
+
+### Internal helpers (exported for tests, not part of the stable API)
+```nim
+proc visibleLen(s: string): int
+  ## Display width of s, ignoring ANSI escapes
+
+proc stripAnsi(s: string): string
+  ## Remove all ANSI escape sequences from s
 ```
 
 ## Examples
@@ -113,7 +138,7 @@ When outputting to a terminal, `tabulator` uses cursor positioning for accurate 
 t.renderTable()
 ```
 
-Provide a file name for text-file output:
+Provide a file handle for text-file output:
 ```nim
 # Files get clean text output (ANSI stripped)
 let f = open("table.txt", fmWrite)
@@ -122,15 +147,22 @@ close(f)
 ```
 
 ### Width handling
-- **Terminal output:** If `width=0`, uses terminal width; truncates if too wide
-- **File output:** If `width=0`, no truncation; if `width>0`, truncates to that width
-- **Column expansion:** If specified `width` > natural table width, auto‑sized columns expand evenly
+
+- **Terminal output:**
+  - `width = 0` → natural width; shrinks only if the table would exceed the terminal
+  - `width > 0` → laid out for exactly that width, then clipped at the terminal
+  - Never stretched to fill the terminal
+- **File output:**
+  - `width = 0` → natural width
+  - `width > 0` → exactly that width; the file contains the whole table, no clipping
+- **Fixed columns** (set via `addColumn(width = N)`) are never resized. If
+  fixed columns alone exceed the target, the table overflows.
 
 ```nim
-# Expands auto‑width columns to fill total table width of 120
+# Expands auto‑width columns to exactly 120 display cells
 t.renderTable(width = 120)
 
-# Uses terminal width, truncates if needed
+# Natural width, shrunk to fit if the terminal is narrower
 t.renderTable()
 
 # File with no width limit
@@ -146,8 +178,14 @@ t.addColumn("Description", width = 10)
 t.addRow(@["This is too long and will show as 'This is t…'"])
 ```
 
-### No row-separator borders
-These don't help and take up space, IMHO
+Wide characters are never split mid‑glyph:
+```nim
+t.addColumn("Name", width = 4)
+t.addRow(@["中文字符"])  # Shows "中…" — never half a glyph
+```
+
+### Without borders
+Pass `separator = false` (the default) to omit box‑drawing borders between columns.
 
 ### No cell-overflow/text wrapping
 If necessary, handle this yourself by splitting the text and adding extra rows
