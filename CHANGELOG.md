@@ -6,13 +6,16 @@
 
 ### Changed
 
-- Various improvements and minor fixes
-
 ### Fixed
 
 ### Removed
 
 ____
+## [v1.0.0] - 2026-10-03
+### Changed
+
+- Various improvements and minor fixes
+
 ## [v0.7.0] - 2026-01-11
 ### Changed
 
@@ -47,6 +50,7 @@ ____
 - Initial release
 
 ____
+[v1.0.0]:https://github.com/erykjj/tabulator/releases/tag/v1.0.0
 [v0.7.0]:https://github.com/erykjj/tabulator/releases/tag/v0.7.0
 [v0.5.0]:https://github.com/erykjj/tabulator/releases/tag/v0.5.0
 [v0.3.0]:https://github.com/erykjj/tabulator/releases/tag/v0.3.0
