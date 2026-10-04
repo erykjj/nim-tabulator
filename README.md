@@ -43,17 +43,6 @@ t.addRow(@["Cherry", "$15.00", "\e[31mlow\e[0m"])
 t.renderTable(separator = true)
 ```
 
-Output (colors not visible here):
-
-┏━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━┓
-┃ Product              ┃  Price ┃ In Stock ┃
-┣━━━━━━━━━━━━━━━━━━━━━━╋━━━━━━━━╋━━━━━━━━━━┫
-┃ Apple                ┃  $2.50 ┃   yes    ┃
-┃ Banana               ┃  $1.20 ┃    no    ┃
-┃ Cherry               ┃ $15.00 ┃   low    ┃
-┗━━━━━━━━━━━━━━━━━━━━━━┻━━━━━━━━┻━━━━━━━━━━┛
-
-
 ## API Reference
 
 ### Types
