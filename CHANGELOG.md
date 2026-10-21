@@ -4,7 +4,11 @@
 
 ### Added
 
+- Added sorting
+
 ### Changed
+
+- **Breaking changes**: `addColumn()` now returns `int` (the column index)
 
 ### Fixed
 
