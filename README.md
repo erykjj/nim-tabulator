@@ -11,6 +11,7 @@ Nim library for generating plain-text tables (with Unicode and ANSI code support
 - **Terminal‑aware output** – Natural width by default; shrinks only if the table would exceed the terminal
 - **Clean output** – Optional box‑drawing borders, no trailing whitespace in file output[^#]
 - **Hyperlinks** – Passes through OSC 8 hyperlink sequences for terminals that support them
+- **Sorting** – Sort rows by one or more columns, ascending or descending, with optional custom comparators
 - **No external dependencies** – Uses only Nim standard library
 
   <img src="screenshots/file.png" width=350><br />
@@ -52,12 +53,21 @@ type Alignment* = enum
   Center  ## Text is centred within the column width
   Right   ## Text is right-padded
 
+type SortOrder* = enum
+  Ascending   ## Smallest first
+  Descending  ## Largest first
+
+type SortKey* = object
+  column*: int                          ## 0-based column index
+  order*: SortOrder                     ## Ascending or Descending
+  compare*: proc(a, b: string): int     ## Optional custom comparator
+
 type Table* = ref object  # Opaque, create with newTable()
 ```
 
 ### Consts
 ```nim
-const Version* = "1.0.0"
+const Version* = "2.0.0"
   ## For checking the current version programmatically
 ```
 
@@ -66,16 +76,29 @@ const Version* = "1.0.0"
 proc newTable(): Table
   ## Create a new empty table
 
-proc addColumn(t: Table, title: string = "", width: int = 0, align: Alignment = Left)
+proc addColumn(t: Table, title: string = "", width: int = 0, align: Alignment = Left): int
   ## Add a column definition
   ## - `title`: Column header (pre‑format with embedded ANSI codes)
   ##   - if ALL column titles are empty = no header
   ## - `width`: Fixed width in display cells (0 = auto‑size to content)
   ##   - `1` produces "…" when content is longer; `2` produces "x…"; etc.
   ## - `align`: Cell alignment (Left, Center, Right)
+  ##
+  ## Returns the 0-based index of the new column, suitable for `SortKey`.
 
 proc addRow(t: Table, cells: seq[string])
   ## Add a row of data; cells are strings (pre‑format numbers, embed ANSI codes)
+
+proc sortRows(t: Table, keys: openArray[SortKey]): Table
+  ## Return a new table with rows sorted by `keys` (first key is primary,
+  ## later keys are tie-breakers). `t` is not modified.
+  ##
+  ## Rows are always sorted by their raw cell content, not by the
+  ## formatted/truncated display output.
+
+proc numericCompare(a, b: string): int
+  ## Convenience comparator: parses both strings as floats.
+  ## Anything else raises `ValueError`.
 
 proc renderTable(t: Table, separator = false, width: int = 0, outFile: File = stdout)
   ## Render the table
@@ -116,6 +139,42 @@ t.addColumn("\e[1;4mImportant\e[0m", width = 15)
 t.addColumn("\e[33mValue\e[0m", align = Right)
 t.addRow(@["Normal text", "\e[32m✓\e[0m"])
 t.renderTable(separator = true)
+```
+
+### Sorting
+`addColumn` returns the column's index, so you can capture it and reuse it in `SortKey`:
+
+```nim
+var t = newTable()
+let colProduct = t.addColumn("Product", width = 20)
+let colPrice   = t.addColumn("Price", align = Right)
+let colStock   = t.addColumn("In Stock", align = Center)
+
+t.addRow(@["Apple",  "$2.50",  "\e[32myes\e[0m"])
+t.addRow(@["Banana", "$1.20",  "no"])
+t.addRow(@["Cherry", "$15.00", "\e[31mlow\e[0m"])
+
+# Sort by price ascending, numerically
+t.sortRows(@[
+  SortKey(column: colPrice, order: Ascending, compare: numericCompare),
+]).renderTable(separator = true)
+
+# Multi-column: sort by stock status, then by price descending
+t.sortRows(@[
+  SortKey(column: colStock, order: Ascending),
+  SortKey(column: colPrice, order: Descending, compare: numericCompare),
+]).renderTable(separator = true)
+```
+
+Without a `compare` proc, cells are compared lexicographically after stripping ANSI escapes. Provide your own comparator for case-insensitive, date, or semantic sorting:
+
+```nim
+proc caseInsensitiveCmp(a, b: string): int =
+  cmp(stripAnsi(a).toLowerAscii, stripAnsi(b).toLowerAscii)
+
+t.sortRows(@[
+  SortKey(column: colProduct, order: Ascending, compare: caseInsensitiveCmp),
+]).renderTable(separator = true)
 ```
 
 ## Advanced Usage
