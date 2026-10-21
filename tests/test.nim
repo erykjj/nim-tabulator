@@ -146,9 +146,9 @@ block:
        "Below: 'x' is at the LEFT of col 1, CENTER of col 2, RIGHT of col 3.")
   block:
     var ta = newTable()
-    ta.addColumn("L", width = 5, align = Alignment.Left)
-    ta.addColumn("C", width = 5, align = Alignment.Center)
-    ta.addColumn("R", width = 5, align = Alignment.Right)
+    discard ta.addColumn("L", width = 5, align = Alignment.Left)
+    discard ta.addColumn("C", width = 5, align = Alignment.Center)
+    discard ta.addColumn("R", width = 5, align = Alignment.Right)
     ta.addRow(@["x", "x", "x"])
     ta.renderTable(separator = true)
     let s = capture(ta, separator = true)
@@ -175,8 +175,8 @@ block:
        "last cell's content.")
   block:
     var tb = newTable()
-    tb.addColumn("A", width = 6, align = Alignment.Right)
-    tb.addColumn("B", width = 8)
+    discard tb.addColumn("A", width = 6, align = Alignment.Right)
+    discard tb.addColumn("B", width = 8)
     tb.addRow(@["1", "hello"])
     tb.renderTable(separator = false)
     let s = capture(tb, separator = false)
@@ -200,8 +200,8 @@ block:
        "the file output. Header and data rows have equal display width.")
   block:
     var tc = newTable()
-    tc.addColumn("A", width = 5)
-    tc.addColumn("B", width = 6)
+    discard tc.addColumn("A", width = 5)
+    discard tc.addColumn("B", width = 6)
     tc.addRow(@["\e[31mhello world", "short"])
     tc.renderTable(separator = true)
     let s = capture(tc, separator = true)
@@ -216,8 +216,8 @@ block:
        "Below: column A shows just '…'. Column B shows 'w…'.")
   block:
     var tt = newTable()
-    tt.addColumn("A", width = 1)
-    tt.addColumn("B", width = 2)
+    discard tt.addColumn("A", width = 1)
+    discard tt.addColumn("B", width = 2)
     tt.addRow(@["hello", "world"])
     tt.renderTable(separator = true)
     let s = capture(tt, separator = true)
@@ -231,7 +231,7 @@ block:
        "Below: output contains 'hel…'. No ESC bytes.")
   block:
     var tm = newTable()
-    tm.addColumn("A", width = 4)
+    discard tm.addColumn("A", width = 4)
     tm.addRow(@["\e[1m\e[31mhello\e[0m"])
     tm.renderTable(separator = true)
     let s = capture(tm, separator = true)
@@ -249,9 +249,9 @@ block:
        "Row 2 shows a, b, c but NOT d or e (extras dropped).")
   block:
     var ts = newTable()
-    ts.addColumn("A")
-    ts.addColumn("B")
-    ts.addColumn("C")
+    discard ts.addColumn("A")
+    discard ts.addColumn("B")
+    discard ts.addColumn("C")
     ts.addRow(@["only-one"])
     ts.addRow(@["a", "b", "c", "d", "e"])
     ts.renderTable(separator = true)
@@ -274,8 +274,8 @@ block:
        "width or minimum 1. Exactly 5 lines.")
   block:
     var te = newTable()
-    te.addColumn("A")
-    te.addColumn("B")
+    discard te.addColumn("A")
+    discard te.addColumn("B")
     te.addRow(@["", ""])
     te.renderTable(separator = true)
     let s = capture(te, separator = true)
@@ -294,7 +294,7 @@ block:
        "No half-glyph. Ellipsis present.")
   block:
     var tj = newTable()
-    tj.addColumn("A", width = 4)
+    discard tj.addColumn("A", width = 4)
     tj.addRow(@["中文字符"])
     tj.renderTable(separator = true)
     let s = capture(tj, separator = true)
@@ -313,7 +313,7 @@ block:
        "Below: header is truncated with an ellipsis.")
   block:
     var th = newTable()
-    th.addColumn("中文名字长", width = 4)
+    discard th.addColumn("中文名字长", width = 4)
     th.addRow(@["x"])
     th.renderTable(separator = true)
     let s = capture(th, separator = true)
@@ -325,8 +325,8 @@ block:
        "Below: both data rows have identical display width.")
   block:
     var tcj = newTable()
-    tcj.addColumn("Name")
-    tcj.addColumn("Qty", align = Alignment.Right)
+    discard tcj.addColumn("Name")
+    discard tcj.addColumn("Qty", align = Alignment.Right)
     tcj.addRow(@["中文名", "1"])
     tcj.addRow(@["ab", "22"])
     tcj.renderTable(separator = true)
@@ -346,7 +346,7 @@ block:
     var tn = newTable()
     var raised = false
     try:
-      tn.addColumn("X", width = -1)
+      discard tn.addColumn("X", width = -1)
     except ValueError:
       raised = true
     doAssert raised
@@ -366,8 +366,8 @@ block:
        "Below: renders header, separator, and borders. No data rows.")
   block:
     var t4 = newTable()
-    t4.addColumn("Empty", width = 10)
-    t4.addColumn("Table")
+    discard t4.addColumn("Empty", width = 10)
+    discard t4.addColumn("Table")
     t4.renderTable(separator = true)
     t4.renderTable(separator = false)
     echo "PASS"
@@ -377,7 +377,7 @@ block:
        "Below: renders without hanging. The bare-ESC cell may appear blank.")
   block:
     var t10 = newTable()
-    t10.addColumn("X")
+    discard t10.addColumn("X")
     t10.addRow(@["\e"])
     t10.addRow(@["after"])
     t10.renderTable(separator = true)
@@ -393,8 +393,8 @@ block:
        "File width equals the target exactly. 47 is the natural width.")
   block:
     var tw = newTable()
-    tw.addColumn("Auto A")
-    tw.addColumn("Auto B")
+    discard tw.addColumn("Auto A")
+    discard tw.addColumn("Auto B")
     tw.addRow(@["aaaaaaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbbb"])
     let natural = capture(tw, separator = true, width = 0)
     doAssert visibleLen(natural.splitLines()[0]) == 47,
@@ -411,8 +411,8 @@ block:
        "padded to 10). Auto column absorbs the remaining 23 cells.")
   block:
     var tf = newTable()
-    tf.addColumn("Fixed", width = 10)
-    tf.addColumn("Auto")
+    discard tf.addColumn("Fixed", width = 10)
+    discard tf.addColumn("Auto")
     tf.addRow(@["hello", "world"])
     let s40 = capture(tf, separator = true, width = 40)
     doAssert visibleLen(s40.splitLines()[0]) == 40
@@ -426,8 +426,8 @@ block:
        "File width is natural (17 cells): 1 + 7 + 1 + 7 + 1. Not stretched.")
   block:
     var tfx = newTable()
-    tfx.addColumn("A", width = 5)
-    tfx.addColumn("B", width = 5)
+    discard tfx.addColumn("A", width = 5)
+    discard tfx.addColumn("B", width = 5)
     tfx.addRow(@["x", "y"])
     let s = capture(tfx, separator = true, width = 0)
     doAssert visibleLen(s.splitLines()[0]) == 17,
@@ -439,8 +439,8 @@ block:
        "File width is 47 (fixed widths win). Target 10 is ignored.")
   block:
     var tov = newTable()
-    tov.addColumn("A", width = 20)
-    tov.addColumn("B", width = 20)
+    discard tov.addColumn("A", width = 20)
+    discard tov.addColumn("B", width = 20)
     tov.addRow(@["x", "y"])
     let s = capture(tov, separator = true, width = 10)
     doAssert visibleLen(s.splitLines()[0]) == 47,
@@ -453,9 +453,9 @@ block:
        "produces; we only check it's non-empty.")
   block:
     var to = newTable()
-    to.addColumn("A")
-    to.addColumn("B")
-    to.addColumn("C")
+    discard to.addColumn("A")
+    discard to.addColumn("B")
+    discard to.addColumn("C")
     to.addRow(@["x", "y", "z"])
     let s = capture(to, separator = true, width = 4)
     doAssert s.len > 0
@@ -477,7 +477,7 @@ block:
     let a = capture(t6, separator = true, width = 40)
     let b = capture(t6, separator = true, width = 40)
     doAssert a == b
-    t6.addColumn("Late")
+    discard t6.addColumn("Late")
     let c = capture(t6, separator = true, width = 40)
     doAssert c.contains("Late")
     doAssert not c.contains("defined")
@@ -492,8 +492,8 @@ block:
        "Every non-empty line ends with a non-space character.")
   block:
     var t1 = newTable()
-    t1.addColumn("A")
-    t1.addColumn("B")
+    discard t1.addColumn("A")
+    discard t1.addColumn("B")
     t1.addRow(@["x", "y"])
     let s = capture(t1, separator = false)
     for line in s.splitLines():
@@ -511,8 +511,8 @@ block:
        "4 lines (header, sep, 2 data).")
   block:
     var tsep = newTable()
-    tsep.addColumn("A")
-    tsep.addColumn("B")
+    discard tsep.addColumn("A")
+    discard tsep.addColumn("B")
     tsep.addRow(@["1", "2"])
     tsep.addRow(@["3", "4"])
     let withBox = capture(tsep, separator = true)
@@ -559,16 +559,16 @@ block:
        "up. 'In Stock' green, 'Out of Stock' red, 'Limited' yellow. " &
        "Stars render as ★ or ☆. Right border present.")
   var t = newTable()
-  t.addColumn("ID", width = 4, align = Alignment.Right)
-  t.addColumn("\e[1mProduct Name\e[0m", width = 20)
-  t.addColumn("Category", width = 12)
-  t.addColumn("Supplier")
-  t.addColumn("Price USD", align = Alignment.Right)
-  t.addColumn("Qty", align = Alignment.Center)
-  t.addColumn("Weight (kg)", align = Alignment.Right)
-  t.addColumn("Last Updated")
-  t.addColumn("Status")
-  t.addColumn("Rating", align = Alignment.Center)
+  let colID       = t.addColumn("ID", width = 4, align = Alignment.Right)   # 0
+  let colProduct  = t.addColumn("\e[1mProduct Name\e[0m", width = 20)       # 1
+  let colCategory = t.addColumn("Category", width = 12)                     # 2
+  discard t.addColumn("Supplier")                                           # 3
+  let colPrice    = t.addColumn("Price USD", align = Alignment.Right)       # 4
+  discard t.addColumn("Qty", align = Alignment.Center)                      # 5
+  discard t.addColumn("Weight (kg)", align = Alignment.Right)               # 6
+  discard t.addColumn("Last Updated")                                       # 7
+  discard t.addColumn("Status")                                             # 8
+  discard t.addColumn("Rating", align = Alignment.Center)                   # 9
   t.addRow(@["001", "Organic Apples", "Fruit", "Fresh Farms Inc.", "2.50", "150", "1.2", "2024-03-15", "\e[32mIn Stock\e[0m", "★★★★☆"])
   t.addRow(@["002", "Bananas Fair Trade", "Fruit", "Tropical Imports", "1.20", "75", "0.8", "2024-03-14", "\e[32mIn Stock\e[0m", "★★★☆☆"])
   t.addRow(@["003", "Artisanal Bread", "Bakery", "Local Bakery Co.", "5.99", "23", "0.5", "2024-03-15", "\e[33mLimited\e[0m", "★★★★★"])
@@ -597,10 +597,10 @@ block:
        "At width = 160/200: laid out for that target but clipped at your " &
        "terminal width; alignment of visible columns still holds.")
   var t2 = newTable()
-  t2.addColumn("Short", width = 5)
-  t2.addColumn("Auto Width Test")
-  t2.addColumn("Fixed Truncate", width = 8)
-  t2.addColumn("Right Aligned", align = Alignment.Right)
+  discard t2.addColumn("Short", width = 5)
+  discard t2.addColumn("Auto Width Test")
+  discard t2.addColumn("Fixed Truncate", width = 8)
+  discard t2.addColumn("Right Aligned", align = Alignment.Right)
   t2.addRow(@["A", "This is a moderately long piece of text that will force auto-width", "This should be truncated with ellipsis because it's too long", "42"])
   t2.addRow(@["B", "Short", "1234567890", "\e[31m-15\e[0m"])
   t2.addRow(@["", "Another test with \e[1mANSI\e[0m codes that don't affect width", "Hi", "9999"])
@@ -619,9 +619,9 @@ block:
        "Prices line up on the right. 'yes' green, 'no' plain, 'low' red. " &
        "Product column 20 cells wide.")
   var t7 = newTable()
-  t7.addColumn("Product", width = 20)
-  t7.addColumn("Price", align = Alignment.Right)
-  t7.addColumn("In Stock", align = Alignment.Center)
+  discard t7.addColumn("Product", width = 20)
+  discard t7.addColumn("Price", align = Alignment.Right)
+  discard t7.addColumn("In Stock", align = Alignment.Center)
   t7.addRow(@["Apple", "$2.50", "\e[32myes\e[0m"])
   t7.addRow(@["Banana", "$1.20", "no"])
   t7.addRow(@["Cherry", "$15.00", "\e[31mlow\e[0m"])
@@ -639,8 +639,8 @@ block:
        "'Example' will be underlined and clickable. If not, they render " &
        "as plain text — that is the correct fallback.")
   var t8 = newTable()
-  t8.addColumn("Site")
-  t8.addColumn("Visits", align = Alignment.Right)
+  discard t8.addColumn("Site")
+  discard t8.addColumn("Visits", align = Alignment.Right)
   t8.addRow(@["\e]8;;https://nim-lang.org\e\\Nim\e]8;;\e\\", "1"])
   t8.addRow(@["\e]8;;https://example.com\e\\Example\e]8;;\e\\", "2"])
   t8.renderTable(separator = true)
@@ -649,3 +649,89 @@ block:
 
   echo "\n─────────────────────────────────────────────────────────────"
   echo "All assertion tests passed. Review the VISUAL sections above."
+
+  # ===================================================================
+  # VISUAL: SORTING
+  # ===================================================================
+
+  show("VISUAL 5: Sort by Price ascending (numeric)",
+       "The same 10-row table sorted by 'Price USD' ascending, using " &
+       "numericCompare so 2.50 < 12.99 (not lexicographic).",
+       "Rows ordered by price: 1.20, 2.50, 3.49, 3.99, 4.99, 5.99, " &
+       "6.75, 8.50, 12.99, 15.25.")
+  block:
+    let s = t.sortRows(@[
+      SortKey(column: colPrice, order: Ascending, compare: numericCompare)
+    ])
+    s.renderTable(separator = true)
+    let captured = capture(s, separator = true)
+    let lines = captured.strip().splitLines()
+    doAssert lines[3].contains("1.20"), "first row should be $1.20, got: " & lines[3]
+    doAssert lines[^2].contains("15.25"), "last row should be $15.25, got: " & lines[^2]
+    echo "PASS"
+
+  show("VISUAL 6: Sort by Price descending",
+       "The same table sorted by 'Price USD' descending.",
+       "Rows ordered by price: 15.25, 12.99, 8.50, 6.75, 5.99, 4.99, " &
+       "3.99, 3.49, 2.50, 1.20.")
+  block:
+    let s = t.sortRows(@[
+      SortKey(column: colPrice, order: Descending, compare: numericCompare)
+    ])
+    s.renderTable(separator = true)
+    let captured = capture(s, separator = true)
+    let lines = captured.strip().splitLines()
+    doAssert lines[3].contains("15.25"), "first row should be $15.25, got: " & lines[3]
+    doAssert lines[^2].contains("1.20"), "last row should be $1.20, got: " & lines[^2]
+    echo "PASS"
+
+  show("VISUAL 7: Multi-column sort (Category asc, then Price desc)",
+       "Sorted by Category ascending, ties broken by Price descending. " &
+       "Within Category 'Dairy', 4.99 comes before 3.49.",
+       "Categories group: Bakery, Beverages, Condiments, Dairy, Fruit, " &
+       "Grains, Snacks. Within Dairy: 4.99 then 3.49. Within Fruit: 2.50 then 1.20.")
+  block:
+    let s = t.sortRows(@[
+      SortKey(column: colCategory, order: Ascending),
+      SortKey(column: colPrice, order: Descending, compare: numericCompare)
+    ])
+    s.renderTable(separator = true)
+    let captured = capture(s, separator = true)
+    let lines = captured.strip().splitLines()
+    var firstBakery = -1
+    var lastSnacks = -1
+    for i, ln in lines:
+      if ln.contains("Bakery") and firstBakery < 0: firstBakery = i
+      if ln.contains("Snacks"): lastSnacks = i
+    doAssert firstBakery > 0, "expected a 'Bakery' row"
+    doAssert lastSnacks > firstBakery, "expected 'Snacks' after 'Bakery'"
+    var firstDairy499 = -1
+    var firstDairy349 = -1
+    for i, ln in lines:
+      if ln.contains("Dairy") and ln.contains("4.99") and firstDairy499 < 0:
+        firstDairy499 = i
+      if ln.contains("Dairy") and ln.contains("3.49") and firstDairy349 < 0:
+        firstDairy349 = i
+    doAssert firstDairy499 > 0 and firstDairy349 > 0, "expected both Dairy rows"
+    doAssert firstDairy499 < firstDairy349,
+      "within Dairy, 4.99 must precede 3.49"
+    echo "PASS"
+
+  show("VISUAL 8: Sort by lexicographic (raw string compare)",
+       "Sorted by 'Product Name' ascending using the default lexicographic " &
+       "comparator (ANSI-stripped).",
+       "Alphabetical: Almond Milk, Artisanal Bread, Bananas Fair Trade, " &
+       "Dark Chocolate, Extra Virgin Olive Oil, Free-Range Eggs, " &
+       "Greek Yogurt, Maple Syrup, Organic Apples, Quinoa Organic.")
+  block:
+    let s = t.sortRows(@[
+      SortKey(column: colProduct, order: Ascending)
+    ])
+    s.renderTable(separator = true)
+    let captured = capture(s, separator = true)
+    let lines = captured.strip().splitLines()
+    doAssert lines[3].contains("Almond Milk"),
+      "first should be Almond Milk, got: " & lines[3]
+    doAssert lines[^2].contains("Quinoa"),
+      "last should be Quinoa, got: " & lines[^2]
+    echo "PASS"
