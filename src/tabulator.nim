@@ -2,11 +2,11 @@
 ##            (with Unicode and ANSI code support)
 ## MIT © 2026 Eryk J
 
-const Version* = "1.0.0"
+const Version* = "2.0.0"
   ## For checking the current version programmatically.
 
 import
-  std/[terminal, unicode, strutils]
+  std/[ algorithm, strutils, terminal, unicode ]
 
 type
   Alignment* = enum
@@ -25,6 +25,27 @@ type
     ## `addColumn` and `addRow`, output with `renderTable`.
     columns: seq[Column]
     rows: seq[seq[string]]
+
+  SortOrder* = enum
+    ## Sort direction for a `SortKey`.
+    Ascending,  ## Smallest first (default for `cmp`).
+    Descending  ## Largest first.
+
+  SortKey* = object
+    ## One key in a multi-column sort specification.
+    ##
+    ## Keys are applied in order: the first is the primary sort, later
+    ## keys are tie-breakers.
+    column*: int
+      ## 0-based column index. Use the value returned by `addColumn`.
+    order*: SortOrder
+      ## Sort direction. Defaults to `Ascending`.
+    compare*: proc(a, b: string): int
+      ## Optional comparator. If nil, cells are compared lexicographically
+      ## after stripping ANSI escapes. Comparison is case-sensitive:
+      ## uppercase letters sort before lowercase (byte order). Provide a
+      ## custom comparator for case-insensitive, numeric, date, or
+      ## semantic sorting.
 
 
 # ---------------------------------------------------------------------------
@@ -115,6 +136,7 @@ proc isZeroWidth(cp: int): bool =
   if cp >= 0xE0020 and cp <= 0xE007F: return true
   return false
 
+
 proc isWide(cp: int): bool =
   if cp < 0x1100: return false
   if cp <= 0x115F: return true
@@ -137,10 +159,12 @@ proc isWide(cp: int): bool =
   if cp >= 0x30000 and cp <= 0x3FFFD: return true
   return false
 
+
 proc runeWidth(cp: int): int =
   if isZeroWidth(cp): return 0
   if isWide(cp): return 2
   1
+
 
 proc visibleLen*(s: string): int =
   ## Display width of `s`, ignoring ANSI escapes.
@@ -163,6 +187,7 @@ proc visibleLen*(s: string): int =
       result += runeWidth(cp)
       i += g
 
+
 proc stripAnsi*(s: string): string =
   ## Remove all ANSI escape sequences from `s`.
   ## A bare/invalid ESC is preserved (it is not a sequence).
@@ -183,6 +208,7 @@ proc stripAnsi*(s: string): string =
       let g = s.runeLenAt(i)
       result.add s[i ..< i + g]
       i += g
+
 
 proc truncate(s: string, maxVisible: int, addReset: bool = true): string =
   ## Truncate `s` to at most `maxVisible` display cells.
@@ -214,6 +240,7 @@ proc truncate(s: string, maxVisible: int, addReset: bool = true): string =
       i += g
   if i < s.len and addReset and sawEscape:
     result.add "\e[0m"
+
 
 proc formatCell(content: string, width: int, align: Alignment): string =
   ## Pad or truncate cell content to exactly `width` display cells.
@@ -259,6 +286,7 @@ proc overhead(n: int): int =
   if n > 1:
     result += (n - 1) * 3
 
+
 proc naturalWidth(col: Column, i: int, rows: seq[seq[string]]): int =
   ## Natural (unconstrained) width of column `i`.
   if col.width > 0:
@@ -270,12 +298,14 @@ proc naturalWidth(col: Column, i: int, rows: seq[seq[string]]): int =
       if cw > w: w = cw
   max(1, w)
 
+
 proc hasAnyTitle(columns: seq[Column]): bool =
   ## True if at least one column has a non-empty title.
   for col in columns:
     if col.title.len > 0:
       return true
   false
+
 
 proc computeColumnWidths(columns: seq[Column], rows: seq[seq[string]],
                          target: int): seq[int] =
@@ -356,6 +386,7 @@ proc prepareForFile(s: string, maxWidth: int, shouldTruncate: bool): string =
     result = truncate(result, maxWidth, addReset = false)
   result = result.strip(leading = false, trailing = true)
 
+
 proc borderLine(left, mid, right, fill: string, widths: seq[int]): string =
   ## Build a horizontal border. Two shapes are used:
   ##   * boxed (`mid` non-empty): `left` + fill×(w+2) joined by `mid` +
@@ -371,6 +402,7 @@ proc borderLine(left, mid, right, fill: string, widths: seq[int]): string =
       result.add repeat(fill, w)
       if i < widths.high:
         result.add "   "
+
 
 proc renderToFile(t: Table, colWidths: seq[int], borderChar: string,
                   outFile: File) =
@@ -410,6 +442,7 @@ proc renderToFile(t: Table, colWidths: seq[int], borderChar: string,
   if borderChar == "┃":
     let bot = borderLine("┗", "┻", "┛", "━", colWidths)
     outFile.writeLine prepareForFile(bot, high(int), false)
+
 
 proc renderToTerminal(t: Table, colWidths, colStarts: seq[int],
                       borderChar: string, clipWidth: int) =
@@ -497,21 +530,84 @@ proc newTable*(): Table =
   ## Create a new empty table.
   Table(columns: @[], rows: @[])
 
+
 proc addColumn*(t: Table, title: string = "", width: int = 0,
-                align: Alignment = Left) =
+                align: Alignment = Left): int =
   ## Add a column definition.
   ## - `title`: Column header (may contain ANSI codes).
   ##   If ALL column titles are empty, no header row is printed.
   ## - `width`: Fixed width in display cells, or 0 for auto-size.
   ##   `1` produces "…" when content is longer; `2` produces "x…"; etc.
   ## - `align`: Cell alignment within the column.
+  ##
+  ## Returns the 0-based index of the new column, which can be passed to
+  ## `SortKey` to sort by that column later.
+  ##
+  ## .. versionchanged:: 2.0.0
+  ##    This proc now returns `int` (the column index) instead of
+  ##    `void`. Existing call sites that used `addColumn` as a statement
+  ##    may need to add `discard` before each call, or use the returned index.
   if width < 0:
     raise newException(ValueError, "Column width cannot be negative")
+  result = t.columns.len
   t.columns.add Column(title: title, width: width, align: align)
+
 
 proc addRow*(t: Table, cells: seq[string]) =
   ## Append a row of data. Cells may contain ANSI escape sequences.
   t.rows.add cells
+
+
+proc numericCompare*(a, b: string): int =
+  ## Convenience comparator: parse both strings as floats and compare.
+  ##
+  ## Both strings must be valid numeric literals (whitespace around the
+  ## number is ignored). Anything else raises `ValueError`. Formatting
+  ## such as a leading `$` must be stripped by the caller before
+  ## supplying this comparator.
+  cmp(parseFloat(a.strip), parseFloat(b.strip))
+
+
+proc sortRows*(t: Table, keys: openArray[SortKey]): Table =
+  ## Return a new `Table` with rows sorted by `keys`.
+  ##
+  ## Keys are applied in order (first is primary, later keys are
+  ## tie-breakers). If `SortKey.compare` is nil, cells are compared
+  ## lexicographically after stripping ANSI escapes. Provide a custom
+  ## comparator for numeric, date, or semantic sorting.
+  ##
+  ## Rows are always sorted by their raw cell content, not by the
+  ## formatted/truncated display output.
+  ##
+  ## `t` is not modified. Rows outside `keys`' column range use the
+  ## empty string for comparison.
+  if keys.len == 0:
+    return Table(columns: t.columns, rows: t.rows)
+
+  for k in keys:
+    if k.column < 0 or k.column >= t.columns.len:
+      raise newException(ValueError,
+        "SortKey column out of range: " & $k.column &
+        " (table has " & $t.columns.len & " columns)")
+
+  let defaultCompare = proc(a, b: string): int =
+    cmp(stripAnsi(a), stripAnsi(b))
+
+  var ownedKeys = @keys
+  var sortedRows = t.rows
+  sortedRows.sort(proc(a, b: seq[string]): int =
+    for k in ownedKeys:
+      let av = if k.column < a.len: a[k.column] else: ""
+      let bv = if k.column < b.len: b[k.column] else: ""
+      let cmpFn = if k.compare.isNil: defaultCompare else: k.compare
+      let c = cmpFn(av, bv)
+      if c != 0:
+        return if k.order == Ascending: c else: -c
+    0
+  )
+
+  Table(columns: t.columns, rows: sortedRows)
+
 
 proc renderTable*(t: Table, separator = false, width: int = 0,
                   outFile: File = stdout) =
