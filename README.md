@@ -4,7 +4,7 @@ Nim library for generating plain-text tables (with Unicode and ANSI code support
 
 ## Features
 
-- **Auto‑column creation** – Define columns explicitly or let the library infer them from your data
+- **Auto‑column creation** – Define columns explicitly or let the library create them from your row data
 - **Unicode‑aware** – Correct display width for CJK, fullwidth forms, emoji, skin‑tone modifiers, combining marks, and zero‑width joiners
 - **ANSI code support** – Colors and styling preserved in terminal output; stripped cleanly for file output[^*]
 - **Configurable columns** – Fixed or auto‑width, left/center/right alignment
@@ -33,9 +33,9 @@ import tabulator
 
 var t = newTable()
 
-t.addColumn("Product", width = 20)
-t.addColumn("Price", align = Right)
-t.addColumn("In Stock", align = Center)
+discard t.defineColumn("Product", width = 20)
+discard t.defineColumn("Price", align = Right)
+discard t.defineColumn("In Stock", align = Center)
 
 t.addRow(@["Apple", "$2.50", "\e[32myes\e[0m"])
 t.addRow(@["Banana", "$1.20", "no"])
@@ -76,18 +76,35 @@ const Version* = "2.0.0"
 proc newTable(): Table
   ## Create a new empty table
 
-proc addColumn(t: Table, title: string = "", width: int = 0, align: Alignment = Left): int
-  ## Add a column definition
+proc defineColumn(t: Table, title: string = "", width: int = 0, align: Alignment = Left): int
+  ## Define a column slot
   ## - `title`: Column header (pre‑format with embedded ANSI codes)
   ##   - if ALL column titles are empty = no header
   ## - `width`: Fixed width in display cells (0 = auto‑size to content)
   ##   - `1` produces "…" when content is longer; `2` produces "x…"; etc.
   ## - `align`: Cell alignment (Left, Center, Right)
   ##
-  ## Returns the 0-based index of the new column, suitable for `SortKey`.
+  ## If an undefined slot already exists (created implicitly by `addRow`
+  ## when a row had more cells than the current column set), that slot is
+  ## filled in. Otherwise a new slot is appended. This makes the order of
+  ## `defineColumn` and `addRow` calls independent.
+  ##
+  ## Returns the 0-based index of the slot that was defined. Column
+  ## indices are stable for the lifetime of the table, so this value can
+  ## be captured and reused as `SortKey.column`.
 
 proc addRow(t: Table, cells: seq[string])
   ## Add a row of data; cells are strings (pre‑format numbers, embed ANSI codes)
+  ##
+  ## If `cells.len` exceeds the current column count, new undefined slots
+  ## are created to hold the extra cells. They can be defined later by
+  ## `defineColumn`.
+
+proc rowCount(t: Table): int
+  ## Number of rows in the table
+
+proc columnCount(t: Table): int
+  ## Number of columns in the table (defined and undefined)
 
 proc sortRows(t: Table, keys: openArray[SortKey]): Table
   ## Return a new table with rows sorted by `keys` (first key is primary,
@@ -123,7 +140,7 @@ proc stripAnsi(s: string): string
 ## Examples
 
 ### Auto‑columns (no header)
-Automatically creates columns based on data:
+Automatically creates columns based on data. `addRow` extends the column set as needed; no `defineColumn` calls are required:
 ```nim
 var t = newTable()
 t.addRow(@["A", "Short text", "42"])
@@ -132,23 +149,37 @@ t.addRow(@["", "Another row", "9999"])
 t.renderTable()
 ```
 
+### Rows first, columns later
+Because `defineColumn` fills the next undefined slot, you can add data before deciding what to call the columns. The result is the same as if you had defined columns first:
+```nim
+var t = newTable()
+t.addRow(@["Apple", "$2.50", "yes"])
+t.addRow(@["Banana", "$1.20", "no"])
+# t now has three undefined columns.
+discard t.defineColumn("Product", width = 20)
+discard t.defineColumn("Price", align = Right)
+discard t.defineColumn("In Stock", align = Center)
+# Same shape as defining columns before adding rows.
+t.renderTable(separator = true)
+```
+
 ### Styled headers and cells
 ```nim
 var t = newTable()
-t.addColumn("\e[1;4mImportant\e[0m", width = 15)
-t.addColumn("\e[33mValue\e[0m", align = Right)
+discard t.defineColumn("\e[1;4mImportant\e[0m", width = 15)
+discard t.defineColumn("\e[33mValue\e[0m", align = Right)
 t.addRow(@["Normal text", "\e[32m✓\e[0m"])
 t.renderTable(separator = true)
 ```
 
 ### Sorting
-`addColumn` returns the column's index, so you can capture it and reuse it in `SortKey`:
+`defineColumn` returns the column's index, so you can capture it and reuse it in `SortKey`. Indices are stable for the lifetime of the table:
 
 ```nim
 var t = newTable()
-let colProduct = t.addColumn("Product", width = 20)
-let colPrice   = t.addColumn("Price", align = Right)
-let colStock   = t.addColumn("In Stock", align = Center)
+let colProduct = t.defineColumn("Product", width = 20)
+let colPrice   = t.defineColumn("Price", align = Right)
+let colStock   = t.defineColumn("In Stock", align = Center)
 
 t.addRow(@["Apple",  "$2.50",  "\e[32myes\e[0m"])
 t.addRow(@["Banana", "$1.20",  "no"])
@@ -203,8 +234,8 @@ close(f)
 - **File output:**
   - `width = 0` → natural width
   - `width > 0` → exactly that width; the file contains the whole table, no clipping
-- **Fixed columns** (set via `addColumn(width = N)`) are never resized. If
-  fixed columns alone exceed the target, the table overflows.
+- **Fixed columns** (set via `defineColumn(width = N)`) are never resized; if
+  fixed columns alone exceed the target, the table overflows
 
 ```nim
 # Expands auto‑width columns to exactly 120 display cells
@@ -222,13 +253,13 @@ close(f)
 ### Cell truncation
 Fixed‑width columns truncate with ellipsis:
 ```nim
-t.addColumn("Description", width = 10)
+discard t.defineColumn("Description", width = 10)
 t.addRow(@["This is too long and will show as 'This is t…'"])
 ```
 
 Wide characters are never split mid‑glyph:
 ```nim
-t.addColumn("Name", width = 4)
+discard t.defineColumn("Name", width = 4)
 t.addRow(@["中文字符"])  # Shows "中…" — never half a glyph
 ```
 
