@@ -14,19 +14,17 @@ ____
 ## [v2.0.0] - 2026-10-22
 ### Added
 
-- `SortOrder` enum, `SortKey` object, `sortRows` proc, `numericCompare` proc
-- `rowCount` and `columnCount` procs
+- Added sorting
+  - `SortOrder` enum, `SortKey` object, `sortRows` proc, `numericCompare` proc
+- Added helper procs
+  - `rowCount` and `columnCount` procs
 
 ### Changed
 
 - **Breaking changes**
   - `addColumn` renamed to `defineColumn`
-  - `defineColumn` returns `int` instead of `void`
-  - `defineColumn` fills the first undefined column slot rather than always
-    appending; slots are created implicitly by `addRow` when a row has more
-    cells than the current column set; `defineColumn` fills the lowest such
-    slot, or appends if none exist; this makes column definition order-
-    independent of row insertion order
+  - `defineColumn` returns `int` instead of `void` - use `discard` if not collecting that return value
+  - `defineColumn` fills the first undefined column slot rather than always appending; slots are created implicitly by `addRow` when a row has more cells than the current column set; `defineColumn` fills the lowest such slot, or appends if none exist; this makes column definition order-independent of row insertion order
   - column indices are stable for the lifetime of the table (no shifting)
 
 ## [v1.0.0] - 2026-10-03
