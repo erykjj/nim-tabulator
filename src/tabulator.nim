@@ -19,10 +19,11 @@ type
     title: string
     width: int
     align: Alignment
+    defined: bool
 
   Table* = ref object
     ## A rendered table. Create with `newTable`, populate with
-    ## `addColumn` and `addRow`, output with `renderTable`.
+    ## `defineColumn` and `addRow`, output with `renderTable`.
     columns: seq[Column]
     rows: seq[seq[string]]
 
@@ -37,7 +38,7 @@ type
     ## Keys are applied in order: the first is the primary sort, later
     ## keys are tie-breakers.
     column*: int
-      ## 0-based column index. Use the value returned by `addColumn`.
+      ## 0-based column index. Use the value returned by `defineColumn`.
     order*: SortOrder
       ## Sort direction. Defaults to `Ascending`.
     compare*: proc(a, b: string): int
@@ -531,31 +532,50 @@ proc newTable*(): Table =
   Table(columns: @[], rows: @[])
 
 
-proc addColumn*(t: Table, title: string = "", width: int = 0,
-                align: Alignment = Left): int =
-  ## Add a column definition.
+proc defineColumn*(t: Table, title: string = "", width: int = 0,
+                   align: Alignment = Left): int =
+  ## Define a column slot.
+  ##
+  ## If a slot exists that was created implicitly (by a row longer than the
+  ## current column set) but has no definition, that slot is filled in.
+  ## Otherwise a new slot is appended.
+  ##
   ## - `title`: Column header (may contain ANSI codes).
   ##   If ALL column titles are empty, no header row is printed.
   ## - `width`: Fixed width in display cells, or 0 for auto-size.
   ##   `1` produces "…" when content is longer; `2` produces "x…"; etc.
   ## - `align`: Cell alignment within the column.
   ##
-  ## Returns the 0-based index of the new column, which can be passed to
-  ## `SortKey` to sort by that column later.
+  ## Returns the 0-based position of the slot that was defined. Since
+  ## columns are never reordered or deleted, this value is stable and can
+  ## be reused as `SortKey.column`.
   ##
   ## .. versionchanged:: 2.0.0
-  ##    This proc now returns `int` (the column index) instead of
-  ##    `void`. Existing call sites that used `addColumn` as a statement
-  ##    may need to add `discard` before each call, or use the returned index.
+  ##    Renamed from `addColumn`. Now returns the slot's 0-based index
+  ##    and fills the lowest-position undefined slot rather than always
+  ##    appending.
   if width < 0:
     raise newException(ValueError, "Column width cannot be negative")
+  for i, col in t.columns:
+    if not col.defined:
+      t.columns[i] = Column(title: title, width: width, align: align,
+                            defined: true)
+      return i
   result = t.columns.len
-  t.columns.add Column(title: title, width: width, align: align)
+  t.columns.add Column(title: title, width: width, align: align, defined: true)
 
 
 proc addRow*(t: Table, cells: seq[string]) =
   ## Append a row of data. Cells may contain ANSI escape sequences.
+  ##
+  ## If `cells.len` exceeds the current column count, new slots are
+  ## created to hold the extra cells. Those slots are undefined until
+  ## `defineColumn` is called for them.
   t.rows.add cells
+  if cells.len > t.columns.len:
+    let needed = cells.len - t.columns.len
+    for _ in 0 ..< needed:
+      t.columns.add Column(title: "", width: 0, align: Left, defined: false)
 
 
 proc numericCompare*(a, b: string): int =
@@ -609,6 +629,16 @@ proc sortRows*(t: Table, keys: openArray[SortKey]): Table =
   Table(columns: t.columns, rows: sortedRows)
 
 
+proc rowCount*(t: Table): int =
+  ## Number of rows in the table.
+  t.rows.len
+
+
+proc columnCount*(t: Table): int =
+  ## Number of columns in the table.
+  t.columns.len
+
+
 proc renderTable*(t: Table, separator = false, width: int = 0,
                   outFile: File = stdout) =
   ## Render the table.
@@ -639,9 +669,9 @@ proc renderTable*(t: Table, separator = false, width: int = 0,
   ##   import tabulator
   ##
   ##   var t = newTable()
-  ##   t.addColumn("Product", width = 20)
-  ##   t.addColumn("Price", align = Right)
-  ##   t.addColumn("In Stock", align = Center)
+  ##   let colProduct = t.defineColumn("Product", width = 20)
+  ##   let colPrice   = t.defineColumn("Price", align = Right)
+  ##   let colStock   = t.defineColumn("In Stock", align = Center)
   ##
   ##   t.addRow(@["Apple", "$2.50", "yes"])
   ##   t.addRow(@["Banana", "$1.20", "no"])
@@ -651,27 +681,10 @@ proc renderTable*(t: Table, separator = false, width: int = 0,
 
   let isTerminal = outFile == stdout and stdout.isatty
 
-  var columns: seq[Column]
   if t.columns.len == 0:
-    if t.rows.len == 0:
-      return
-    var maxCols = 0
-    for row in t.rows:
-      if row.len > maxCols: maxCols = row.len
-    if maxCols == 0:
-      return
-    columns = newSeq[Column](maxCols)
-    for i in 0 ..< maxCols:
-      columns[i] = Column(title: "", width: 0, align: Left)
-  else:
-    columns = t.columns
+    return
+  let columns = t.columns
 
-  # -- Pick the layout target.
-  #  target == 0 means "natural width".
-  #  On a terminal, if `width` is not set and the natural layout would
-  #  exceed the terminal, cap at the terminal width so the table fits.
-  #  We never stretch a table to fill the terminal: natural width wins
-  #  unless the terminal forces a shrink.
   var target = width
   var clipWidth = 0
   if isTerminal:
