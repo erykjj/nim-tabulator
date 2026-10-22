@@ -62,6 +62,17 @@
   Left,                     ## Text is left-padded (default).
   Center,                   ## Text is centred within the column width.
   Right                      ## Text is right-padded.">Alignment</a></li>
+<li><a class="reference" href="#SortKey" title="SortKey = object
+  column*: int               ## 0-based column index. Use the value returned by `addColumn`.
+  order*: SortOrder          ## Sort direction. Defaults to `Ascending`.
+  compare*: proc (a, b: string): int ## Optional comparator. If nil, cells are compared lexicographically
+                                     ## after stripping ANSI escapes. Comparison is case-sensitive:
+                                     ## uppercase letters sort before lowercase (byte order). Provide a
+                                     ## custom comparator for case-insensitive, numeric, date, or
+                                     ## semantic sorting.">SortKey</a></li>
+<li><a class="reference" href="#SortOrder" title="SortOrder = enum
+  Ascending,                ## Smallest first (default for `cmp`).
+  Descending                 ## Largest first.">SortOrder</a></li>
 <li><a class="reference" href="#Table" title="Table = ref object">Table</a></li>
 
     </ul>
@@ -71,7 +82,7 @@
   <details open>
     <summary><a class="reference reference-toplevel" href="#10" id="60">Consts</a></summary>
     <ul class="simple simple-toc-section">
-      <li><a class="reference" href="#Version" title="Version = &quot;1.0.0&quot;">Version</a></li>
+      <li><a class="reference" href="#Version" title="Version = &quot;2.0.0&quot;">Version</a></li>
 
     </ul>
   </details>
@@ -80,20 +91,38 @@
   <details open>
     <summary><a class="reference reference-toplevel" href="#12" id="62">Procs</a></summary>
     <ul class="simple simple-toc-section">
-      <ul class="simple nested-toc-section">addColumn
-  <li><a class="reference" href="#addColumn%2CTable%2Cstring%2Cint%2CAlignment" title="addColumn(t: Table; title: string = &quot;&quot;; width: int = 0; align: Alignment = Left)">addColumn(t: Table; title: string = &quot;&quot;; width: int = 0; align: Alignment = Left)</a></li>
+      <ul class="simple nested-toc-section">addRow
+  <li><a class="reference" href="#addRow%2CTable%2Cseq%5Bstring%5D" title="addRow(t: Table; cells: seq[string])">addRow(t: Table; cells: seq[string])</a></li>
 
 </ul>
-<ul class="simple nested-toc-section">addRow
-  <li><a class="reference" href="#addRow%2CTable%2Cseq%5Bstring%5D" title="addRow(t: Table; cells: seq[string])">addRow(t: Table; cells: seq[string])</a></li>
+<ul class="simple nested-toc-section">columnCount
+  <li><a class="reference" href="#columnCount%2CTable" title="columnCount(t: Table): int">columnCount(t: Table): int</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">defineColumn
+  <li><a class="reference" href="#defineColumn%2CTable%2Cstring%2Cint%2CAlignment" title="defineColumn(t: Table; title: string = &quot;&quot;; width: int = 0;
+             align: Alignment = Left): int">defineColumn(t: Table; title: string = &quot;&quot;; width: int = 0;
+             align: Alignment = Left): int</a></li>
 
 </ul>
 <ul class="simple nested-toc-section">newTable
   <li><a class="reference" href="#newTable" title="newTable(): Table">newTable(): Table</a></li>
 
 </ul>
+<ul class="simple nested-toc-section">numericCompare
+  <li><a class="reference" href="#numericCompare%2Cstring%2Cstring" title="numericCompare(a, b: string): int">numericCompare(a, b: string): int</a></li>
+
+</ul>
 <ul class="simple nested-toc-section">renderTable
   <li><a class="reference" href="#renderTable%2CTable%2Cint%2CFile" title="renderTable(t: Table; separator = false; width: int = 0; outFile: File = stdout)">renderTable(t: Table; separator = false; width: int = 0; outFile: File = stdout)</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">rowCount
+  <li><a class="reference" href="#rowCount%2CTable" title="rowCount(t: Table): int">rowCount(t: Table): int</a></li>
+
+</ul>
+<ul class="simple nested-toc-section">sortRows
+  <li><a class="reference" href="#sortRows%2CTable%2CopenArray%5BSortKey%5D" title="sortRows(t: Table; keys: openArray[SortKey]): Table">sortRows(t: Table; keys: openArray[SortKey]): Table</a></li>
 
 </ul>
 <ul class="simple nested-toc-section">stripAnsi
@@ -131,6 +160,33 @@
     
   </dd>
 </div>
+<div id="SortKey">
+  <dt><pre><a href="#SortKey"><span class="Identifier">SortKey</span></a> <span class="Other">=</span> <span class="Keyword">object</span>
+  <span class="Identifier">column</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>               <span class="Comment">## 0-based column index. Use the value returned by `addColumn`.</span>
+  <span class="Identifier">order</span><span class="Operator">*</span><span class="Other">:</span> <a href="#SortOrder"><span class="Identifier">SortOrder</span></a>          <span class="Comment">## Sort direction. Defaults to `Ascending`.</span>
+  <span class="Identifier">compare</span><span class="Operator">*</span><span class="Other">:</span> <span class="Keyword">proc</span> <span class="Other">(</span><span class="Identifier">a</span><span class="Other">,</span> <span class="Identifier">b</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">int</span> <span class="Comment">## Optional comparator. If nil, cells are compared lexicographically</span>
+                                     <span class="Comment">## after stripping ANSI escapes. Comparison is case-sensitive:</span>
+                                     <span class="Comment">## uppercase letters sort before lowercase (byte order). Provide a</span>
+                                     <span class="Comment">## custom comparator for case-insensitive, numeric, date, or</span>
+                                     <span class="Comment">## semantic sorting.</span></pre></dt>
+  <dd>
+    
+    <p>One key in a multi-column sort specification.</p>
+<p>Keys are applied in order: the first is the primary sort, later keys are tie-breakers.</p>
+
+    
+  </dd>
+</div>
+<div id="SortOrder">
+  <dt><pre><a href="#SortOrder"><span class="Identifier">SortOrder</span></a> <span class="Other">=</span> <span class="Keyword">enum</span>
+  <span class="Identifier">Ascending</span><span class="Other">,</span>                <span class="Comment">## Smallest first (default for `cmp`).</span>
+  <span class="Identifier">Descending</span>                 <span class="Comment">## Largest first.</span></pre></dt>
+  <dd>
+    
+    Sort direction for a <tt class="docutils literal"><span class="pre"><span class="Identifier">SortKey</span></span></tt>.
+    
+  </dd>
+</div>
 <div id="Table">
   <dt><pre><a href="#Table"><span class="Identifier">Table</span></a> <span class="Other">=</span> <span class="Keyword">ref</span> <span class="Keyword">object</span></pre></dt>
   <dd>
@@ -146,7 +202,7 @@
   <h1><a class="toc-backref" href="#10">Consts</a></h1>
   <dl class="item">
     <div id="Version">
-  <dt><pre><a href="#Version"><span class="Identifier">Version</span></a> <span class="Other">=</span> <span class="StringLit">&quot;1.0.0&quot;</span></pre></dt>
+  <dt><pre><a href="#Version"><span class="Identifier">Version</span></a> <span class="Other">=</span> <span class="StringLit">&quot;2.0.0&quot;</span></pre></dt>
   <dd>
     
     For checking the current version programmatically.
@@ -159,29 +215,48 @@
 <div class="section" id="12">
   <h1><a class="toc-backref" href="#12">Procs</a></h1>
   <dl class="item">
-    <div id="addColumn-procs-all">
-  <div id="addColumn,Table,string,int,Alignment">
-  <dt><pre><span class="Keyword">proc</span> <a href="#addColumn%2CTable%2Cstring%2Cint%2CAlignment"><span class="Identifier">addColumn</span></a><span class="Other">(</span><span class="Identifier">t</span><span class="Other">:</span> <a href="#Table"><span class="Identifier">Table</span></a><span class="Other">;</span> <span class="Identifier">title</span><span class="Other">:</span> <span class="Identifier">string</span> <span class="Other">=</span> <span class="StringLit">&quot;&quot;</span><span class="Other">;</span> <span class="Identifier">width</span><span class="Other">:</span> <span class="Identifier">int</span> <span class="Other">=</span> <span class="DecNumber">0</span><span class="Other">;</span>
-               <span class="Identifier">align</span><span class="Other">:</span> <a href="#Alignment"><span class="Identifier">Alignment</span></a> <span class="Other">=</span> <span class="Identifier">Left</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">ValueError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
-    <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+    <div id="addRow-procs-all">
+  <div id="addRow,Table,seq[string]">
+  <dt><pre><span class="Keyword">proc</span> <a href="#addRow%2CTable%2Cseq%5Bstring%5D"><span class="Identifier">addRow</span></a><span class="Other">(</span><span class="Identifier">t</span><span class="Other">:</span> <a href="#Table"><span class="Identifier">Table</span></a><span class="Other">;</span> <span class="Identifier">cells</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">]</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
-    Add a column definition.<ul class="simple"><li><tt class="docutils literal"><span class="pre"><span class="Identifier">title</span></span></tt>: Column header (may contain ANSI codes). If ALL column titles are empty, no header row is printed.</li>
-<li><tt class="docutils literal"><span class="pre"><span class="Identifier">width</span></span></tt>: Fixed width in display cells, or 0 for auto-size. <tt class="docutils literal"><span class="pre"><span class="DecNumber">1</span></span></tt> produces &quot;…&quot; when content is longer; <tt class="docutils literal"><span class="pre"><span class="DecNumber">2</span></span></tt> produces &quot;x…&quot;; etc.</li>
-<li><tt class="docutils literal"><span class="pre"><span class="Identifier">align</span></span></tt>: Cell alignment within the column.</li>
-</ul>
+    <p>Append a row of data. Cells may contain ANSI escape sequences.</p>
+<p>If <tt class="docutils literal"><span class="pre"><span class="Identifier">cells</span><span class="Operator">.</span><span class="Identifier">len</span></span></tt> exceeds the current column count, new slots are created to hold the extra cells. Those slots are undefined until <tt class="docutils literal"><span class="pre"><span class="Identifier">defineColumn</span></span></tt> is called for them.</p>
 
     
   </dd>
 </div>
 
 </div>
-<div id="addRow-procs-all">
-  <div id="addRow,Table,seq[string]">
-  <dt><pre><span class="Keyword">proc</span> <a href="#addRow%2CTable%2Cseq%5Bstring%5D"><span class="Identifier">addRow</span></a><span class="Other">(</span><span class="Identifier">t</span><span class="Other">:</span> <a href="#Table"><span class="Identifier">Table</span></a><span class="Other">;</span> <span class="Identifier">cells</span><span class="Other">:</span> <span class="Identifier">seq</span><span class="Other">[</span><span class="Identifier">string</span><span class="Other">]</span><span class="Other">)</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+<div id="columnCount-procs-all">
+  <div id="columnCount,Table">
+  <dt><pre><span class="Keyword">proc</span> <a href="#columnCount%2CTable"><span class="Identifier">columnCount</span></a><span class="Other">(</span><span class="Identifier">t</span><span class="Other">:</span> <a href="#Table"><span class="Identifier">Table</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">int</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
-    Append a row of data. Cells may contain ANSI escape sequences.
+    <pre>Number of columns in the table.
+
+.. versionadded:: 2.0.0</pre>
+
+    
+  </dd>
+</div>
+
+</div>
+<div id="defineColumn-procs-all">
+  <div id="defineColumn,Table,string,int,Alignment">
+  <dt><pre><span class="Keyword">proc</span> <a href="#defineColumn%2CTable%2Cstring%2Cint%2CAlignment"><span class="Identifier">defineColumn</span></a><span class="Other">(</span><span class="Identifier">t</span><span class="Other">:</span> <a href="#Table"><span class="Identifier">Table</span></a><span class="Other">;</span> <span class="Identifier">title</span><span class="Other">:</span> <span class="Identifier">string</span> <span class="Other">=</span> <span class="StringLit">&quot;&quot;</span><span class="Other">;</span> <span class="Identifier">width</span><span class="Other">:</span> <span class="Identifier">int</span> <span class="Other">=</span> <span class="DecNumber">0</span><span class="Other">;</span>
+                  <span class="Identifier">align</span><span class="Other">:</span> <a href="#Alignment"><span class="Identifier">Alignment</span></a> <span class="Other">=</span> <span class="Identifier">Left</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">int</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">ValueError</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    <p>Define a column slot.</p>
+<p>If a slot exists that was created implicitly (by a row longer than the current column set) but has no definition, that slot is filled in. Otherwise a new slot is appended.</p>
+<ul class="simple"><li><tt class="docutils literal"><span class="pre"><span class="Identifier">title</span></span></tt>: Column header (may contain ANSI codes). If ALL column titles are empty, no header row is printed.</li>
+<li><tt class="docutils literal"><span class="pre"><span class="Identifier">width</span></span></tt>: Fixed width in display cells, or 0 for auto-size. <tt class="docutils literal"><span class="pre"><span class="DecNumber">1</span></span></tt> produces &quot;…&quot; when content is longer; <tt class="docutils literal"><span class="pre"><span class="DecNumber">2</span></span></tt> produces &quot;x…&quot;; etc.</li>
+<li><tt class="docutils literal"><span class="pre"><span class="Identifier">align</span></span></tt>: Cell alignment within the column.</li>
+</ul>
+<p>Returns the 0-based position of the slot that was defined. Since columns are never reordered or deleted, this value is stable and can be reused as <tt class="docutils literal"><span class="pre"><span class="Identifier">SortKey</span><span class="Operator">.</span><span class="Identifier">column</span></span></tt>.</p>
+
     
   </dd>
 </div>
@@ -193,6 +268,20 @@
   <dd>
     
     Create a new empty table.
+    
+  </dd>
+</div>
+
+</div>
+<div id="numericCompare-procs-all">
+  <div id="numericCompare,string,string">
+  <dt><pre><span class="Keyword">proc</span> <a href="#numericCompare%2Cstring%2Cstring"><span class="Identifier">numericCompare</span></a><span class="Other">(</span><span class="Identifier">a</span><span class="Other">,</span> <span class="Identifier">b</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">int</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">ValueError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span>
+    <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    <p>Convenience comparator: parse both strings as floats and compare.</p>
+<p>Both strings must be valid numeric literals (whitespace around the number is ignored). Anything else raises <tt class="docutils literal"><span class="pre"><span class="Identifier">ValueError</span></span></tt>. Formatting such as a leading <tt class="docutils literal"><span class="pre"><span class="Operator">$</span></span></tt> must be stripped by the caller before supplying this comparator.</p>
+
     
   </dd>
 </div>
@@ -234,6 +323,36 @@
 </div>
 
 </div>
+<div id="rowCount-procs-all">
+  <div id="rowCount,Table">
+  <dt><pre><span class="Keyword">proc</span> <a href="#rowCount%2CTable"><span class="Identifier">rowCount</span></a><span class="Other">(</span><span class="Identifier">t</span><span class="Other">:</span> <a href="#Table"><span class="Identifier">Table</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">int</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    <pre>Number of rows in the table.
+
+.. versionadded:: 2.0.0</pre>
+
+    
+  </dd>
+</div>
+
+</div>
+<div id="sortRows-procs-all">
+  <div id="sortRows,Table,openArray[SortKey]">
+  <dt><pre><span class="Keyword">proc</span> <a href="#sortRows%2CTable%2CopenArray%5BSortKey%5D"><span class="Identifier">sortRows</span></a><span class="Other">(</span><span class="Identifier">t</span><span class="Other">:</span> <a href="#Table"><span class="Identifier">Table</span></a><span class="Other">;</span> <span class="Identifier">keys</span><span class="Other">:</span> <span class="Identifier">openArray</span><span class="Other">[</span><a href="#SortKey"><span class="Identifier">SortKey</span></a><span class="Other">]</span><span class="Other">)</span><span class="Other">:</span> <a href="#Table"><span class="Identifier">Table</span></a> {.
+    <span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">ValueError</span><span class="Other">,</span> <span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
+  <dd>
+    
+    <p>Return a new <tt class="docutils literal"><span class="pre"><span class="Identifier">Table</span></span></tt> with rows sorted by <tt class="docutils literal"><span class="pre"><span class="Identifier">keys</span></span></tt>.</p>
+<p>Keys are applied in order (first is primary, later keys are tie-breakers). If <tt class="docutils literal"><span class="pre"><span class="Identifier">SortKey</span><span class="Operator">.</span><span class="Identifier">compare</span></span></tt> is nil, cells are compared lexicographically after stripping ANSI escapes. Provide a custom comparator for numeric, date, or semantic sorting.</p>
+<p>Rows are always sorted by their raw cell content, not by the formatted/truncated display output.</p>
+<p><tt class="docutils literal"><span class="pre"><span class="Identifier">t</span></span></tt> is not modified. Rows outside <tt class="docutils literal"><span class="pre"><span class="Identifier">keys</span></span></tt>' column range use the empty string for comparison.</p>
+
+    
+  </dd>
+</div>
+
+</div>
 <div id="stripAnsi-procs-all">
   <div id="stripAnsi,string">
   <dt><pre><span class="Keyword">proc</span> <a href="#stripAnsi%2Cstring"><span class="Identifier">stripAnsi</span></a><span class="Other">(</span><span class="Identifier">s</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">string</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
@@ -270,7 +389,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-10-03 23:20:22 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-10-22 13:31:26 UTC</small>
       </div>
     </div>
   </div>
