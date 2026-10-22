@@ -63,7 +63,7 @@
   Center,                   ## Text is centred within the column width.
   Right                      ## Text is right-padded.">Alignment</a></li>
 <li><a class="reference" href="#SortKey" title="SortKey = object
-  column*: int               ## 0-based column index. Use the value returned by `addColumn`.
+  column*: int               ## 0-based column index. Use the value returned by `defineColumn`.
   order*: SortOrder          ## Sort direction. Defaults to `Ascending`.
   compare*: proc (a, b: string): int ## Optional comparator. If nil, cells are compared lexicographically
                                      ## after stripping ANSI escapes. Comparison is case-sensitive:
@@ -162,7 +162,7 @@
 </div>
 <div id="SortKey">
   <dt><pre><a href="#SortKey"><span class="Identifier">SortKey</span></a> <span class="Other">=</span> <span class="Keyword">object</span>
-  <span class="Identifier">column</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>               <span class="Comment">## 0-based column index. Use the value returned by `addColumn`.</span>
+  <span class="Identifier">column</span><span class="Operator">*</span><span class="Other">:</span> <span class="Identifier">int</span>               <span class="Comment">## 0-based column index. Use the value returned by `defineColumn`.</span>
   <span class="Identifier">order</span><span class="Operator">*</span><span class="Other">:</span> <a href="#SortOrder"><span class="Identifier">SortOrder</span></a>          <span class="Comment">## Sort direction. Defaults to `Ascending`.</span>
   <span class="Identifier">compare</span><span class="Operator">*</span><span class="Other">:</span> <span class="Keyword">proc</span> <span class="Other">(</span><span class="Identifier">a</span><span class="Other">,</span> <span class="Identifier">b</span><span class="Other">:</span> <span class="Identifier">string</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">int</span> <span class="Comment">## Optional comparator. If nil, cells are compared lexicographically</span>
                                      <span class="Comment">## after stripping ANSI escapes. Comparison is case-sensitive:</span>
@@ -191,7 +191,7 @@
   <dt><pre><a href="#Table"><span class="Identifier">Table</span></a> <span class="Other">=</span> <span class="Keyword">ref</span> <span class="Keyword">object</span></pre></dt>
   <dd>
     
-    A rendered table. Create with <tt class="docutils literal"><span class="pre"><span class="Identifier">newTable</span></span></tt>, populate with <tt class="docutils literal"><span class="pre"><span class="Identifier">addColumn</span></span></tt> and <tt class="docutils literal"><span class="pre"><span class="Identifier">addRow</span></span></tt>, output with <tt class="docutils literal"><span class="pre"><span class="Identifier">renderTable</span></span></tt>.
+    A rendered table. Create with <tt class="docutils literal"><span class="pre"><span class="Identifier">newTable</span></span></tt>, populate with <tt class="docutils literal"><span class="pre"><span class="Identifier">defineColumn</span></span></tt> and <tt class="docutils literal"><span class="pre"><span class="Identifier">addRow</span></span></tt>, output with <tt class="docutils literal"><span class="pre"><span class="Identifier">renderTable</span></span></tt>.
     
   </dd>
 </div>
@@ -233,10 +233,7 @@
   <dt><pre><span class="Keyword">proc</span> <a href="#columnCount%2CTable"><span class="Identifier">columnCount</span></a><span class="Other">(</span><span class="Identifier">t</span><span class="Other">:</span> <a href="#Table"><span class="Identifier">Table</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">int</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
-    <pre>Number of columns in the table.
-
-.. versionadded:: 2.0.0</pre>
-
+    Number of columns in the table.
     
   </dd>
 </div>
@@ -249,13 +246,26 @@
     <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
-    <p>Define a column slot.</p>
-<p>If a slot exists that was created implicitly (by a row longer than the current column set) but has no definition, that slot is filled in. Otherwise a new slot is appended.</p>
-<ul class="simple"><li><tt class="docutils literal"><span class="pre"><span class="Identifier">title</span></span></tt>: Column header (may contain ANSI codes). If ALL column titles are empty, no header row is printed.</li>
-<li><tt class="docutils literal"><span class="pre"><span class="Identifier">width</span></span></tt>: Fixed width in display cells, or 0 for auto-size. <tt class="docutils literal"><span class="pre"><span class="DecNumber">1</span></span></tt> produces &quot;…&quot; when content is longer; <tt class="docutils literal"><span class="pre"><span class="DecNumber">2</span></span></tt> produces &quot;x…&quot;; etc.</li>
-<li><tt class="docutils literal"><span class="pre"><span class="Identifier">align</span></span></tt>: Cell alignment within the column.</li>
-</ul>
-<p>Returns the 0-based position of the slot that was defined. Since columns are never reordered or deleted, this value is stable and can be reused as <tt class="docutils literal"><span class="pre"><span class="Identifier">SortKey</span><span class="Operator">.</span><span class="Identifier">column</span></span></tt>.</p>
+    <pre>Define a column slot.
+
+If a slot exists that was created implicitly (by a row longer than the
+current column set) but has no definition, that slot is filled in.
+Otherwise a new slot is appended.
+
+- `title`: Column header (may contain ANSI codes).
+  If ALL column titles are empty, no header row is printed.
+- `width`: Fixed width in display cells, or 0 for auto-size.
+  `1` produces &quot;…&quot; when content is longer; `2` produces &quot;x…&quot;; etc.
+- `align`: Cell alignment within the column.
+
+Returns the 0-based position of the slot that was defined. Since
+columns are never reordered or deleted, this value is stable and can
+be reused as `SortKey.column`.
+
+.. versionchanged:: 2.0.0
+   Renamed from `addColumn`. Now returns the slot's 0-based index
+   and fills the lowest-position undefined slot rather than always
+   appending.</pre>
 
     
   </dd>
@@ -309,9 +319,9 @@
 <pre class="listing"><span class="Keyword">import</span> <span class="Identifier">tabulator</span>
 
 <span class="Keyword">var</span> <span class="Identifier">t</span> <span class="Operator">=</span> <span class="Identifier">newTable</span><span class="Punctuation">(</span><span class="Punctuation">)</span>
-<span class="Identifier">t</span><span class="Operator">.</span><span class="Identifier">addColumn</span><span class="Punctuation">(</span><span class="StringLit">&quot;Product&quot;</span><span class="Punctuation">,</span> <span class="Identifier">width</span> <span class="Operator">=</span> <span class="DecNumber">20</span><span class="Punctuation">)</span>
-<span class="Identifier">t</span><span class="Operator">.</span><span class="Identifier">addColumn</span><span class="Punctuation">(</span><span class="StringLit">&quot;Price&quot;</span><span class="Punctuation">,</span> <span class="Identifier">align</span> <span class="Operator">=</span> <span class="Identifier">Right</span><span class="Punctuation">)</span>
-<span class="Identifier">t</span><span class="Operator">.</span><span class="Identifier">addColumn</span><span class="Punctuation">(</span><span class="StringLit">&quot;In Stock&quot;</span><span class="Punctuation">,</span> <span class="Identifier">align</span> <span class="Operator">=</span> <span class="Identifier">Center</span><span class="Punctuation">)</span>
+<span class="Keyword">let</span> <span class="Identifier">colProduct</span> <span class="Operator">=</span> <span class="Identifier">t</span><span class="Operator">.</span><span class="Identifier">defineColumn</span><span class="Punctuation">(</span><span class="StringLit">&quot;Product&quot;</span><span class="Punctuation">,</span> <span class="Identifier">width</span> <span class="Operator">=</span> <span class="DecNumber">20</span><span class="Punctuation">)</span>
+<span class="Keyword">let</span> <span class="Identifier">colPrice</span>   <span class="Operator">=</span> <span class="Identifier">t</span><span class="Operator">.</span><span class="Identifier">defineColumn</span><span class="Punctuation">(</span><span class="StringLit">&quot;Price&quot;</span><span class="Punctuation">,</span> <span class="Identifier">align</span> <span class="Operator">=</span> <span class="Identifier">Right</span><span class="Punctuation">)</span>
+<span class="Keyword">let</span> <span class="Identifier">colStock</span>   <span class="Operator">=</span> <span class="Identifier">t</span><span class="Operator">.</span><span class="Identifier">defineColumn</span><span class="Punctuation">(</span><span class="StringLit">&quot;In Stock&quot;</span><span class="Punctuation">,</span> <span class="Identifier">align</span> <span class="Operator">=</span> <span class="Identifier">Center</span><span class="Punctuation">)</span>
 
 <span class="Identifier">t</span><span class="Operator">.</span><span class="Identifier">addRow</span><span class="Punctuation">(</span><span class="Operator">@</span><span class="Punctuation">[</span><span class="StringLit">&quot;Apple&quot;</span><span class="Punctuation">,</span> <span class="StringLit">&quot;$2.50&quot;</span><span class="Punctuation">,</span> <span class="StringLit">&quot;yes&quot;</span><span class="Punctuation">]</span><span class="Punctuation">)</span>
 <span class="Identifier">t</span><span class="Operator">.</span><span class="Identifier">addRow</span><span class="Punctuation">(</span><span class="Operator">@</span><span class="Punctuation">[</span><span class="StringLit">&quot;Banana&quot;</span><span class="Punctuation">,</span> <span class="StringLit">&quot;$1.20&quot;</span><span class="Punctuation">,</span> <span class="StringLit">&quot;no&quot;</span><span class="Punctuation">]</span><span class="Punctuation">)</span>
@@ -328,10 +338,7 @@
   <dt><pre><span class="Keyword">proc</span> <a href="#rowCount%2CTable"><span class="Identifier">rowCount</span></a><span class="Other">(</span><span class="Identifier">t</span><span class="Other">:</span> <a href="#Table"><span class="Identifier">Table</span></a><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">int</span> {.<span><span class="Other pragmadots">...</span></span><span class="pragmawrap"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">forbids</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span>.}</pre></dt>
   <dd>
     
-    <pre>Number of rows in the table.
-
-.. versionadded:: 2.0.0</pre>
-
+    Number of rows in the table.
     
   </dd>
 </div>
@@ -389,7 +396,7 @@
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2026-10-22 13:31:26 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2026-10-22 13:48:43 UTC</small>
       </div>
     </div>
   </div>
