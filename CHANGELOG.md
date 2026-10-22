@@ -4,17 +4,31 @@
 
 ### Added
 
-- Added sorting
-
 ### Changed
-
-- **Breaking changes**: `addColumn()` now returns `int` (the column index)
 
 ### Fixed
 
 ### Removed
 
 ____
+## [v2.0.0] - 2026-10-22
+### Added
+
+- `SortOrder` enum, `SortKey` object, `sortRows` proc, `numericCompare` proc
+- `rowCount` and `columnCount` procs
+
+### Changed
+
+- **Breaking changes**
+  - `addColumn` renamed to `defineColumn`
+  - `defineColumn` returns `int` instead of `void`
+  - `defineColumn` fills the first undefined column slot rather than always
+    appending; slots are created implicitly by `addRow` when a row has more
+    cells than the current column set; `defineColumn` fills the lowest such
+    slot, or appends if none exist; this makes column definition order-
+    independent of row insertion order
+  - column indices are stable for the lifetime of the table (no shifting)
+
 ## [v1.0.0] - 2026-10-03
 ### Changed
 
@@ -54,6 +68,7 @@ ____
 - Initial release
 
 ____
+[v2.0.0]:https://github.com/erykjj/tabulator/releases/tag/v2.0.0
 [v1.0.0]:https://github.com/erykjj/tabulator/releases/tag/v1.0.0
 [v0.7.0]:https://github.com/erykjj/tabulator/releases/tag/v0.7.0
 [v0.5.0]:https://github.com/erykjj/tabulator/releases/tag/v0.5.0
